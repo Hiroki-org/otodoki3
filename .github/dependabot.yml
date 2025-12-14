@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # npm パッケージの監視
+  - package-ecosystem: "npm"
+    directory: "/packages/web-app-vercel"
+    schedule:
+      interval: "weekly"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    reviewers:
+      - "is0692vs"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  # GitHub Actionsの監視
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    reviewers:
+      - "is0692vs"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"
