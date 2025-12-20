@@ -44,6 +44,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dislikes_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "track_pool"
+            referencedColumns: ["track_id"]
+          },
         ]
       }
       likes: {
@@ -75,6 +82,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "likes_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "track_pool"
+            referencedColumns: ["track_id"]
           },
         ]
       }
@@ -108,6 +122,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "played_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "track_pool"
+            referencedColumns: ["track_id"]
+          },
         ]
       }
       playlist_tracks: {
@@ -139,6 +160,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "playlists"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "track_pool"
+            referencedColumns: ["track_id"]
           },
         ]
       }

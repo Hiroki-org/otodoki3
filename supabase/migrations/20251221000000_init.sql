@@ -14,6 +14,9 @@ CREATE POLICY "Users can view own profile" ON public.users
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
+CREATE POLICY "Users can insert own profile" ON public.users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
