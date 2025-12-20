@@ -21,5 +21,6 @@ export const cleanupTestData = async (trackIds: string[]) => {
         .in('track_id', trackIds);
     if (error) {
         console.error('Cleanup error:', error);
+        throw new Error(`Failed to cleanup test data: ${error.message}`);
     }
 };
