@@ -9,11 +9,15 @@ import {
     getTracksFromPool,
     addTracksToPool,
     getPoolSize,
-} from '../lib/track-pool';
-import { fetchTracksFromChart } from '../lib/refill-methods/chart';
+} from '@/lib/track-pool';
+import { fetchTracksFromChart } from '@/lib/refill-methods/chart';
+import { supabase } from '@/lib/supabase';
 
 async function main() {
     console.log('=== 楽曲プール管理機能のテスト ===\n');
+
+    // キャプチャしてテスト後にクリーンアップできるようにする
+    let addedTrackIds: string[] = [];
 
     try {
         // 1. 現在のプールサイズを確認
@@ -21,8 +25,8 @@ async function main() {
         const initialSize = await getPoolSize();
         console.log(`現在のプールサイズ: ${initialSize}曲\n`);
 
-        // 2. iTunes Search APIからチャートを取得
-        console.log('2. iTunes Search APIからチャート楽曲を取得中...');
+        // 2. チャートから楽曲を取得
+        console.log('2. チャート楽曲を取得中...');
         const tracks = await fetchTracksFromChart(10);
         console.log(`取得した楽曲数: ${tracks.length}曲\n`);
 
@@ -34,6 +38,8 @@ async function main() {
         // 3. プールに楽曲を追加
         console.log('3. プールに楽曲を追加中...');
         await addTracksToPool(tracks, { method: 'chart', weight: 1.0 });
+        // 追加した track_id を保存してクリーンアップに使う
+        addedTrackIds = tracks.map((t) => t.track_id);
         console.log('楽曲の追加が完了しました\n');
 
         // 4. 追加後のプールサイズを確認
@@ -57,6 +63,29 @@ async function main() {
     } catch (error) {
         console.error('エラーが発生しました:', error);
         process.exit(1);
+    } finally {
+        // テストで追加した楽曲をクリーンアップ（テスト/CI環境でのみ実行する）
+        const shouldCleanup = process.env.NODE_ENV === 'test' || process.env.CI === 'true' || process.env.TEST_CLEANUP === 'true';
+        if (addedTrackIds.length > 0) {
+            if (shouldCleanup) {
+                try {
+                    const { error } = await supabase
+                        .from('track_pool')
+                        .delete()
+                        .in('track_id', addedTrackIds);
+
+                    if (error) {
+                        console.error('Failed to cleanup test tracks:', error);
+                    } else {
+                        console.log(`Cleaned up ${addedTrackIds.length} test tracks from pool.`);
+                    }
+                } catch (cleanupError) {
+                    console.error('Error during cleanup of test tracks:', cleanupError);
+                }
+            } else {
+                console.warn('Skipping cleanup of test tracks (not test/CI environment). Set TEST_CLEANUP=true to force cleanup.');
+            }
+        }
     }
 }
 

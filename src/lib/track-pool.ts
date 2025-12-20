@@ -51,7 +51,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             track_view_url: row.track_view_url ?? undefined,
             genre: row.genre ?? undefined,
             release_date: row.release_date ?? undefined,
-            metadata: (row.metadata as Record<string, unknown>) ?? undefined,
+            metadata: row.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, unknown>) : undefined,
         }));
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
@@ -85,9 +85,29 @@ export async function addTracksToPool(
             track_view_url: track.track_view_url ?? null,
             genre: track.genre ?? null,
             release_date: track.release_date ?? null,
-            metadata: (track.metadata as Database['public']['Tables']['track_pool']['Insert']['metadata']) ?? null,
+            metadata: validateMetadata(track.metadata),
             fetched_at: new Date().toISOString(),
         }));
+
+/**
+ * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
+ */
+function validateMetadata(metadata: unknown): Database['public']['Tables']['track_pool']['Insert']['metadata'] | null {
+    if (metadata == null) return null;
+    // 文字列の場合は JSON をパースしてみる
+    if (typeof metadata === 'string') {
+        try {
+            const parsed = JSON.parse(metadata);
+            return typeof parsed === 'object' ? (parsed as any) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    if (typeof metadata === 'object') {
+        return metadata as any;
+    }
+    return null;
+}
 
         const { error } = await supabase
             .from('track_pool')
@@ -142,49 +162,25 @@ export async function getPoolSize(): Promise<number> {
  */
 export async function trimPool(maxSize: number): Promise<void> {
     try {
-        // 現在のプールサイズを取得
-        const currentSize = await getPoolSize();
+        // RPC を呼び出してアトミックに古い行を削除
+        const rpcResult = await (supabase as any).rpc('trim_track_pool', { max_size: maxSize });
+        const { data, error } = rpcResult || {};
 
-        if (currentSize <= maxSize) {
-            console.log(`Pool size (${currentSize}) is within limit (${maxSize}).`);
-            return;
+        if (error) {
+            console.error('Error trimming track pool via RPC:', error);
+            throw new Error(`Failed to trim track pool: ${error.message}`);
         }
 
-        const excessCount = currentSize - maxSize;
-        console.log(
-            `Pool size (${currentSize}) exceeds limit (${maxSize}). Removing ${excessCount} old tracks.`
-        );
+        // data は [{ deleted_count: <number> }] のような形で返ることを想定
+        const deletedCount = Array.isArray(data) && data.length > 0 && (data[0] as any).deleted_count != null
+            ? Number((data[0] as any).deleted_count)
+            : 0;
 
-        // 古い楽曲を取得
-        const { data: oldTracks, error: selectError } = await supabase
-            .from('track_pool')
-            .select('id')
-            .order('fetched_at', { ascending: true })
-            .limit(excessCount);
-
-        if (selectError) {
-            console.error('Error selecting old tracks:', selectError);
-            throw new Error(`Failed to select old tracks: ${selectError.message}`);
+        if (deletedCount > 0) {
+            console.log(`Successfully removed ${deletedCount} old tracks from pool via RPC.`);
+        } else {
+            console.log('No tracks needed removal after trim RPC.');
         }
-
-        if (!oldTracks || oldTracks.length === 0) {
-            console.log('No tracks to remove.');
-            return;
-        }
-
-        // 古い楽曲を削除
-        const idsToDelete = oldTracks.map((track) => track.id);
-        const { error: deleteError } = await supabase
-            .from('track_pool')
-            .delete()
-            .in('id', idsToDelete);
-
-        if (deleteError) {
-            console.error('Error deleting old tracks:', deleteError);
-            throw new Error(`Failed to delete old tracks: ${deleteError.message}`);
-        }
-
-        console.log(`Successfully removed ${idsToDelete.length} old tracks from pool.`);
     } catch (error) {
         console.error('Error in trimPool:', error);
         throw error;
