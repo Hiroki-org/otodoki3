@@ -1,112 +1,120 @@
 import type { Track } from '@/types/track-pool';
 
 /**
- * iTunes Search APIのレスポンス型定義
+ * Apple RSS Feed APIのレスポンス型（簡易）
  */
-interface ITunesTrack {
-    trackId: number;
-    trackName: string;
+interface AppleRssResult {
+    id: string;
+    name: string;
     artistName: string;
-    collectionName?: string;
-    previewUrl: string;
+    url?: string;
     artworkUrl100?: string;
-    trackViewUrl?: string;
-    primaryGenreName?: string;
-    releaseDate?: string;
+    // 他のフィールドは無視
 }
 
-interface ITunesSearchResponse {
-    resultCount: number;
-    results: ITunesTrack[];
+interface AppleRssResponse {
+    feed: {
+        results: AppleRssResult[];
+    };
 }
 
 /**
- * iTunes Search APIを使用してチャート上位の楽曲を取得
+ * iTunesチャート（Apple RSS）を使用してチャート上位の楽曲を取得
  * @param limit 取得する楽曲数（デフォルト: 50）
- * @returns Track配列
+ * @param options.timeoutMs タイムアウト（ミリ秒、デフォルト: 5000）
+ * @param options.userAgent オプションの User-Agent ヘッダ
  */
-export async function fetchTracksFromChart(limit: number = 50): Promise<Track[]> {
+export async function fetchTracksFromChart(
+    limit: number = 50,
+    options?: { timeoutMs?: number; userAgent?: string }
+): Promise<Track[]> {
+    const timeoutMs = options?.timeoutMs ?? 5000;
+    const userAgent = options?.userAgent ?? `otodoki/1.0`;
+
+    // Apple RSS Charts API (no auth required)
+    const url = `https://rss.applemarketingtools.com/api/v2/jp/music/most-played/${limit}/songs`;
+    console.log(`Fetching tracks from Apple RSS Charts API: ${url}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-        // iTunes Search APIのエンドポイント
-        const baseUrl = 'https://itunes.apple.com/search';
-        const params = new URLSearchParams({
-            term: 'music',
-            limit: limit.toString(),
-            media: 'music',
-            entity: 'song',
-            country: 'JP', // 日本のチャートを取得
-        });
-
-        const url = `${baseUrl}?${params.toString()}`;
-        console.log(`Fetching tracks from iTunes Search API: ${url}`);
-
         const response = await fetch(url, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            signal: controller.signal,
+            headers: userAgent ? { 'User-Agent': userAgent } : undefined,
         });
 
-        if (!response.ok) {
-            throw new Error(
-                `iTunes Search API request failed with status ${response.status}: ${response.statusText}`
-            );
-        }
-
-        const data: ITunesSearchResponse = await response.json();
-
-        if (!data.results || data.results.length === 0) {
-            console.warn('No tracks found from iTunes Search API.');
-            return [];
-        }
-
-        // iTunes APIのレスポンスをTrack型に変換
-        const tracks: Track[] = data.results
-            .filter((item) => item.previewUrl) // プレビューURLが存在するものだけを取得
-            .map((item) => ({
-                track_id: item.trackId.toString(), // BigIntをstringに変換
-                track_name: item.trackName,
-                artist_name: item.artistName,
-                collection_name: item.collectionName,
-                preview_url: item.previewUrl,
-                artwork_url: item.artworkUrl100,
-                track_view_url: item.trackViewUrl,
-                genre: item.primaryGenreName,
-                release_date: item.releaseDate
-                    ? new Date(item.releaseDate).toISOString().split('T')[0]
-                    : undefined,
-                metadata: {
-                    source: 'itunes_search_api',
-                    fetched_from: 'chart',
-                },
-            }));
-
-        console.log(`Successfully fetched ${tracks.length} tracks from iTunes Search API.`);
-        return tracks;
-    } catch (error) {
-        console.error('Error fetching tracks from chart:', error);
-
-        // レート制限エラーの場合
-        if (error instanceof Error && error.message.includes('429')) {
-            console.warn('Rate limit exceeded. Please try again later.');
+        if (response.status === 429) {
+            // レート制限
             throw new Error('iTunes Search API rate limit exceeded. Please try again later.');
         }
 
+        if (!response.ok) {
+            throw new Error(
+                `Apple RSS Charts API request failed with status ${response.status}: ${response.statusText}`
+            );
+        }
+
+        const data = (await response.json()) as AppleRssResponse;
+
+        const results = data?.feed?.results ?? [];
+
+        if (!results || results.length === 0) {
+            console.warn('No tracks found from Apple RSS Charts API.');
+            return [];
+        }
+
+        // RSS APIのレスポンスをTrack型に変換
+        const tracks: Track[] = results
+            .map((item) => ({
+                track_id: item.id.toString(),
+                track_name: item.name,
+                artist_name: item.artistName,
+                collection_name: undefined,
+                preview_url: item.url ?? '', // RSSにはpreviewが無い場合がある
+                artwork_url: item.artworkUrl100,
+                track_view_url: item.url,
+                genre: undefined,
+                release_date: undefined,
+                metadata: {
+                    source: 'apple_rss',
+                    fetched_from: 'chart',
+                },
+            }))
+            // preview_urlが空文字列の場合はフィルタリング
+            .filter((t) => !!t.preview_url);
+
+        console.log(`Successfully fetched ${tracks.length} tracks from Apple RSS Charts API.`);
+        return tracks;
+    } catch (error) {
+        // abortされた場合は特有の処理
+        if (error instanceof Error && (error.name === 'AbortError' || (error as any).code === 'ABORT_ERR')) {
+            console.error('Apple RSS Charts API request aborted due to timeout.');
+            throw new Error('Request to Apple RSS Charts API timed out.');
+        }
+
+        console.error('Error fetching tracks from chart:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
 /**
- * リトライ機能付きでチャートから楽曲を取得
+ * リトライ機能付きでチャートから楽曲を取得（指数バックオフ + ジッター）
  * @param limit 取得する楽曲数
  * @param maxRetries 最大リトライ回数（デフォルト: 3）
- * @param retryDelay リトライ間隔（ミリ秒、デフォルト: 1000）
- * @returns Track配列
+ * @param baseDelay 基本遅延（ミリ秒、デフォルト: 1000）
+ * @param maxDelay 最大遅延（ミリ秒、デフォルト: 30000）
+ * @param jitterFactor ジッター割合（0-1、デフォルト: 0.5）
  */
 export async function fetchTracksFromChartWithRetry(
     limit: number = 50,
     maxRetries: number = 3,
-    retryDelay: number = 1000
+    baseDelay: number = 1000,
+    maxDelay: number = 30000,
+    jitterFactor: number = 0.5
 ): Promise<Track[]> {
     let lastError: Error | null = null;
 
@@ -118,13 +126,17 @@ export async function fetchTracksFromChartWithRetry(
             console.error(`Attempt ${attempt} failed:`, error);
 
             if (attempt < maxRetries) {
-                console.log(`Retrying in ${retryDelay}ms...`);
-                await new Promise((resolve) => setTimeout(resolve, retryDelay));
+                // 指数バックオフ
+                const expDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
+                // ジッター（±0.5*expDelay）
+                const jitter = (Math.random() - 0.5) * expDelay;
+                const delay = Math.max(0, Math.round(expDelay + jitter * Math.min(jitterFactor, 1)));
+
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise((resolve) => setTimeout(resolve, delay));
             }
         }
     }
 
-    throw new Error(
-        `Failed to fetch tracks after ${maxRetries} attempts: ${lastError?.message}`
-    );
+    throw new Error(`Failed to fetch tracks after ${maxRetries} attempts: ${lastError?.message}`);
 }
