@@ -19,21 +19,21 @@ export type Database = {
           created_at: string | null
           id: string
           metadata: Json | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           metadata?: Json | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           metadata?: Json | null
-          track_id?: number
+          track_id?: string
           user_id?: string
         }
         Relationships: [
@@ -51,21 +51,21 @@ export type Database = {
           created_at: string | null
           id: string
           metadata: Json | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           metadata?: Json | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           metadata?: Json | null
-          track_id?: number
+          track_id?: string
           user_id?: string
         }
         Relationships: [
@@ -83,21 +83,21 @@ export type Database = {
           id: string
           metadata: Json | null
           played_at: string | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Insert: {
           id?: string
           metadata?: Json | null
           played_at?: string | null
-          track_id: number
+          track_id: string
           user_id: string
         }
         Update: {
           id?: string
           metadata?: Json | null
           played_at?: string | null
-          track_id?: number
+          track_id?: string
           user_id?: string
         }
         Relationships: [
@@ -116,21 +116,21 @@ export type Database = {
           id: string
           playlist_id: string
           position: number
-          track_id: number
+          track_id: string
         }
         Insert: {
           added_at?: string | null
           id?: string
           playlist_id: string
           position?: number
-          track_id: number
+          track_id: string
         }
         Update: {
           added_at?: string | null
           id?: string
           playlist_id?: string
           position?: number
-          track_id?: number
+          track_id?: string
         }
         Relationships: [
           {
@@ -189,7 +189,7 @@ export type Database = {
           metadata: Json | null
           preview_url: string
           release_date: string | null
-          track_id: number
+          track_id: string
           track_name: string
           track_view_url: string | null
         }
@@ -204,7 +204,7 @@ export type Database = {
           metadata?: Json | null
           preview_url: string
           release_date?: string | null
-          track_id: number
+          track_id: string
           track_name: string
           track_view_url?: string | null
         }
@@ -219,7 +219,7 @@ export type Database = {
           metadata?: Json | null
           preview_url?: string
           release_date?: string | null
-          track_id?: number
+          track_id?: string
           track_name?: string
           track_view_url?: string | null
         }
