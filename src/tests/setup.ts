@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
 export const createTestClient = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL_TEST;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!url || !key) {
         throw new Error('Missing Supabase test credentials. Run `vercel env pull` to get test environment variables.');

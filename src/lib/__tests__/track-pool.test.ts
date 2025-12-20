@@ -1,5 +1,6 @@
 import { validateMetadata, getTracksFromPool, addTracksToPool, getPoolSize } from '../track-pool';
 import { supabase } from '../supabase';
+import { cleanupTestData } from '@/tests/setup';
 import type { Track } from '@/types/track-pool';
 
 describe('validateMetadata', () => {
@@ -41,15 +42,7 @@ describe('track-pool', () => {
     const testTrackIds: string[] = [];
 
     afterEach(async () => {
-        if (testTrackIds.length === 0) return;
-        const { error } = await supabase
-            .from('track_pool')
-            .delete()
-            .in('track_id', testTrackIds);
-        if (error) {
-            console.error('Cleanup error:', error);
-        }
-        testTrackIds.length = 0;
+        await cleanupTestData(testTrackIds);
     });
 
     describe('addTracksToPool', () => {

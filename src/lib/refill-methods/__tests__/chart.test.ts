@@ -47,7 +47,7 @@ describe('chart refill method', () => {
 
         it('タイムアウトは5秒で発生する', async () => {
             // 10秒かかる遅いレスポンスをモック
-            const slowFetch = jest.fn().mockImplementation(() => 
+            const slowFetch = jest.fn().mockImplementation(() =>
                 new Promise((resolve) => {
                     setTimeout(() => resolve({
                         ok: true,
@@ -60,7 +60,7 @@ describe('chart refill method', () => {
 
             // 5秒でタイムアウトするはず
             await expect(fetchTracksFromChart(10)).rejects.toThrow();
-            
+
             expect(slowFetch).toHaveBeenCalled();
         }, 15000); // テスト自体のタイムアウトは15秒
 
