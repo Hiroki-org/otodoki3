@@ -1,4 +1,5 @@
 // .env.local から環境変数を読み込む
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 require("dotenv").config({ path: ".env.local" });
 
 // テスト用環境変数を設定（_TEST サフィックス付きの値を優先して使用）
