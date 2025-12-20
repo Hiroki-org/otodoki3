@@ -4,10 +4,6 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
     try {
-        // 環境変数チェック
-        console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-        console.log('ANON_KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
         // RPC経由で現在時刻を取得（テーブル不要）
         const { data, error } = await supabase.rpc('now').maybeSingle()
 
@@ -19,7 +15,6 @@ export async function GET() {
                 return NextResponse.json({
                     status: 'connected',
                     message: 'Supabase connection OK (no RPC defined)',
-                    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
                 })
             }
             throw error
@@ -35,8 +30,7 @@ export async function GET() {
         return NextResponse.json(
             {
                 status: 'error',
-                message: err instanceof Error ? err.message : String(err),
-                details: err,
+                message: err instanceof Error ? err.message : 'An internal server error occurred.',
             },
             { status: 500 }
         )
