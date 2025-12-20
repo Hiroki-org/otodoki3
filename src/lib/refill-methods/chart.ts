@@ -47,7 +47,7 @@ export async function fetchTracksFromChart(
 
         if (response.status === 429) {
             // レート制限
-            throw new Error('iTunes Search API rate limit exceeded. Please try again later.');
+            throw new Error('Apple RSS Charts API rate limit exceeded. Please try again later.');
         }
 
         if (!response.ok) {

@@ -1,16 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/database';
 import type { Track } from '@/types/track-pool';
 
-// Supabaseクライアントの作成
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase URL and Anon Key must be defined in environment variables.');
+/**
+ * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
+ */
+export function validateMetadata(metadata: unknown): Database['public']['Tables']['track_pool']['Insert']['metadata'] | null {
+    if (metadata == null) return null;
+    // 文字列の場合は JSON をパースしてみる
+    if (typeof metadata === 'string') {
+        try {
+            const parsed = JSON.parse(metadata);
+            return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? (parsed as any) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    if (typeof metadata === 'object' && !Array.isArray(metadata)) {
+        return metadata as any;
+    }
+    return null;
 }
-
-const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // 環境変数からプールの最大サイズを取得（デフォルト: 10000）
 const TRACK_POOL_MAX_SIZE = parseInt(
@@ -51,7 +61,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             track_view_url: row.track_view_url ?? undefined,
             genre: row.genre ?? undefined,
             release_date: row.release_date ?? undefined,
-            metadata: row.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, unknown>) : undefined,
+            metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
         }));
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
@@ -88,26 +98,6 @@ export async function addTracksToPool(
             metadata: validateMetadata(track.metadata),
             fetched_at: new Date().toISOString(),
         }));
-
-        /**
-         * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
-         */
-        function validateMetadata(metadata: unknown): Database['public']['Tables']['track_pool']['Insert']['metadata'] | null {
-            if (metadata == null) return null;
-            // 文字列の場合は JSON をパースしてみる
-            if (typeof metadata === 'string') {
-                try {
-                    const parsed = JSON.parse(metadata);
-                    return typeof parsed === 'object' ? (parsed as any) : null;
-                } catch (_) {
-                    return null;
-                }
-            }
-            if (typeof metadata === 'object') {
-                return metadata as any;
-            }
-            return null;
-        }
 
         const { error } = await supabase
             .from('track_pool')
@@ -163,7 +153,7 @@ export async function getPoolSize(): Promise<number> {
 export async function trimPool(maxSize: number): Promise<void> {
     try {
         // RPC を呼び出してアトミックに古い行を削除
-        const rpcResult = await (supabase as any).rpc('trim_track_pool', { max_size: maxSize });
+        const rpcResult = await supabase.rpc('trim_track_pool', { max_size: maxSize });
         const { data, error } = rpcResult || {};
 
         if (error) {

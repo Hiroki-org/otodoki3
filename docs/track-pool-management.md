@@ -47,15 +47,17 @@ TRACK_POOL_MAX_SIZE=10000
 
 [src/lib/refill-methods/chart.ts](src/lib/refill-methods/chart.ts) に以下の関数を実装：
 
-#### `fetchTracksFromChart(limit: number = 50): Promise<Track[]>`
+#### `fetchTracksFromChart(limit: number = 50, options?: { timeoutMs?: number; userAgent?: string }): Promise<Track[]>`
 
-- iTunes Search API を使用してチャート上位の楽曲を取得
-- パラメータ：`term=music&limit=${limit}&media=music&entity=song&country=JP`
+- Apple RSS Charts API を使用してチャート上位の楽曲を取得
+- エンドポイント：`https://rss.applemarketingtools.com/api/v2/jp/music/most-played/${limit}/songs`
 - エラーハンドリングとレート制限対応を含む
+- タイムアウト：デフォルト 5000ms（AbortController 使用）
 
-#### `fetchTracksFromChartWithRetry(limit: number = 50, maxRetries: number = 3, retryDelay: number = 1000): Promise<Track[]>`
+#### `fetchTracksFromChartWithRetry(limit: number = 50, maxRetries: number = 3, baseDelay: number = 1000, maxDelay: number = 30000, jitterFactor: number = 0.5): Promise<Track[]>`
 
 - リトライ機能付きのチャート取得関数
+- 指数バックオフ + ジッター方式
 
 ## 使用例
 
@@ -98,5 +100,6 @@ node --loader ts-node/esm src/tests/test-track-pool.ts
 ## 注意事項
 
 - `track_id`は BigInt ですが、TypeScript 型では`string`として扱います（桁あふれ対策）
-- iTunes Search API のレスポンス形式に注意し、適切に`Track`型にマッピングします
+- Apple RSS Charts API のレスポンス形式に注意し，適切に`Track`型にマッピングします
+- Apple RSS API は `previewUrl` を提供しないため，`item.url`（ストアページ URL）を使用しています
 - 環境変数が設定されていない場合のフォールバック処理を含めています
