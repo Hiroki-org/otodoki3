@@ -48,12 +48,12 @@ describe('track-pool', () => {
     describe('addTracksToPool', () => {
         it('プールに楽曲を追加できる', async () => {
             const tracks: Track[] = [{
-                track_id: 'test-001',
+                track_id: '999000001',
                 track_name: 'Test Track',
                 artist_name: 'Test Artist',
                 preview_url: 'https://example.com/preview1.mp3',
             }];
-            testTrackIds.push('test-001');
+            testTrackIds.push('999000001');
 
             await addTracksToPool(tracks, { method: 'chart', weight: 1 });
             const size = await getPoolSize();
@@ -62,19 +62,23 @@ describe('track-pool', () => {
 
         it('重複する楽曲は1件のみ保存される', async () => {
             const tracks: Track[] = [{
-                track_id: 'test-002',
+                track_id: '999000002',
                 track_name: 'Test Track 2',
                 artist_name: 'Test Artist 2',
                 preview_url: 'https://example.com/preview2.mp3',
             }];
-            testTrackIds.push('test-002');
+            testTrackIds.push('999000002');
 
+            // 1回目の追加
             await addTracksToPool(tracks, { method: 'chart', weight: 1 });
+            const sizeAfterFirst = await getPoolSize();
+            
+            // 2回目の追加（重複）
             await addTracksToPool(tracks, { method: 'chart', weight: 1 });
-
-            const result = await getTracksFromPool(100);
-            const duplicates = result.filter(t => t.track_id === 'test-002');
-            expect(duplicates).toHaveLength(1);
+            const sizeAfterSecond = await getPoolSize();
+            
+            // サイズが変わらないことを確認（重複が排除されている）
+            expect(sizeAfterSecond).toBe(sizeAfterFirst);
         });
 
         it('空配列を追加してもエラーにならない', async () => {
@@ -85,7 +89,7 @@ describe('track-pool', () => {
     describe('getTracksFromPool', () => {
         it('指定数の楽曲を取得できる', async () => {
             const tracks: Track[] = Array.from({ length: 5 }, (_, i) => ({
-                track_id: `test-${i + 100}`,
+                track_id: `999${String(i + 100).padStart(6, '0')}`,
                 track_name: `Track ${i}`,
                 artist_name: `Artist ${i}`,
                 preview_url: `https://example.com/preview${i}.mp3`,
