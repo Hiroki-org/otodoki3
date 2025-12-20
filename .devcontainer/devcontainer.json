@@ -2,9 +2,10 @@
   "name": "otodoki3 Dev Environment",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/supabase-cli:1": {}
   },
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "npm install && npm install -g vercel @modelcontextprotocol/inspector",
   "forwardPorts": [3000],
   "customizations": {
     "vscode": {
