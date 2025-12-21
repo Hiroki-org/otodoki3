@@ -1,0 +1,57 @@
+import type { Track } from "../types/track-pool";
+import Image from "next/image";
+
+export function TrackCard({ track }: { track: Track }) {
+  const artworkUrl = track.artwork_url?.trim();
+  const backgroundImage = artworkUrl ? `url(${artworkUrl})` : undefined;
+
+  return (
+    <article
+      className="relative h-full w-full overflow-hidden rounded-3xl bg-background text-foreground"
+      aria-label={`${track.track_name} - ${track.artist_name}`}
+      style={
+        backgroundImage
+          ? {
+              backgroundImage,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : undefined
+      }
+    >
+      {!backgroundImage ? (
+        <div className="absolute inset-0 bg-zinc-200 dark:bg-zinc-900" />
+      ) : null}
+
+      <div className="absolute inset-x-0 bottom-0">
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="relative p-5 text-white">
+          <h3 className="text-2xl font-bold leading-tight">
+            {track.track_name}
+          </h3>
+          <p className="mt-1 text-base opacity-90">{track.artist_name}</p>
+
+          {track.track_view_url ? (
+            <div className="mt-4">
+              <a
+                href={track.track_view_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Apple Musicで開く"
+                className="inline-flex items-center"
+              >
+                <Image
+                  src="/apple-music-badge.svg"
+                  alt="Apple Music"
+                  className="h-7 w-auto"
+                  width={180}
+                  height={40}
+                />
+              </a>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
