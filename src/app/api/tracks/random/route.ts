@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import type { Database } from '@/types/database';
-
-type TrackPoolRow = Database['public']['Tables']['track_pool']['Row'];
 
 /**
  * Fisher-Yates shuffle algorithm
@@ -29,8 +26,9 @@ export async function GET(request: NextRequest) {
         // Parse count parameter (default: 10, max: 100)
         const { searchParams } = new URL(request.url);
         const countParam = searchParams.get('count');
+        const parsedCount = parseInt(countParam || '10', 10);
         const count = Math.min(
-            Math.max(1, parseInt(countParam || '10', 10)),
+            Math.max(1, Number.isNaN(parsedCount) ? 10 : parsedCount),
             100
         );
 
