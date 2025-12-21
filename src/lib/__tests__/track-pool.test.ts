@@ -57,7 +57,10 @@ describe('validateMetadata', () => {
     });
 });
 
-describe('track-pool integration tests', () => {
+const hasSupabase = !!(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL);
+const describeIf = (cond: boolean) => cond ? describe : describe.skip;
+
+describeIf(hasSupabase)('track-pool integration tests', () => {
     // テスト前後でクリーンアップ
     beforeEach(async () => {
         await cleanupTestTracks();
@@ -222,7 +225,7 @@ describe('track-pool integration tests', () => {
     });
 });
 
-describe('track-pool error handling', () => {
+describeIf(hasSupabase)('track-pool error handling', () => {
     describe('getTracksFromPool with invalid input', () => {
         it('should handle negative count gracefully', async () => {
             // Supabase は負の limit をエラーとするかもしれない
