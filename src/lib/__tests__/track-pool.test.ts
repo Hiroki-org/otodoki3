@@ -1,6 +1,7 @@
 import { validateMetadata, getTracksFromPool, addTracksToPool, getPoolSize, trimPool } from '../track-pool';
 import { cleanupTestData } from '@/tests/setup';
 import type { Track } from '@/types/track-pool';
+import { supabase } from '../supabase';
 
 // Mock supabase
 jest.mock('../supabase', () => ({
@@ -189,7 +190,7 @@ describe('track-pool error handling', () => {
 
     describe('getTracksFromPool', () => {
         it('should handle supabase error', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 select: jest.fn().mockReturnValueOnce({
                     order: jest.fn().mockReturnValueOnce({
@@ -205,7 +206,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should return empty array when data is null', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 select: jest.fn().mockReturnValueOnce({
                     order: jest.fn().mockReturnValueOnce({
@@ -222,7 +223,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should handle tracks with null fields', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             const mockData = [{
                 track_id: '123',
                 track_name: 'Test',
@@ -257,7 +258,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should handle invalid metadata', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             const mockData = [{
                 track_id: '123',
                 track_name: 'Test',
@@ -284,7 +285,7 @@ describe('track-pool error handling', () => {
 
     describe('addTracksToPool', () => {
         it('should handle supabase upsert error', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 upsert: jest.fn().mockResolvedValueOnce({
                     data: null,
@@ -303,7 +304,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should handle tracks with null fields', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 upsert: jest.fn().mockResolvedValueOnce({
                     data: null,
@@ -328,7 +329,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should handle options being undefined', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 upsert: jest.fn().mockResolvedValueOnce({
                     data: null,
@@ -349,7 +350,7 @@ describe('track-pool error handling', () => {
 
     describe('getPoolSize', () => {
         it('should handle supabase error', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 select: jest.fn().mockImplementationOnce((columns, options) => {
                     if (options && options.count === 'exact') {
@@ -366,7 +367,7 @@ describe('track-pool error handling', () => {
         });
 
         it('should return 0 when count is null', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.from.mockReturnValueOnce({
                 select: jest.fn().mockImplementationOnce((columns, options) => {
                     if (options && options.count === 'exact') {
@@ -386,38 +387,38 @@ describe('track-pool error handling', () => {
 
     describe('trimPool', () => {
         it('should handle supabase rpc error', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: null,
                 error: { message: 'RPC error' },
-            });
+            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
             await expect(trimPool(1000)).rejects.toThrow('Failed to trim track pool: RPC error');
         });
 
         it('should handle rpc result being null', async () => {
-            const mockSupabase = require('../supabase').supabase;
-            mockSupabase.rpc.mockResolvedValueOnce(null);
+            const mockSupabase = jest.mocked(supabase);
+            mockSupabase.rpc.mockResolvedValueOnce(null as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
             await expect(trimPool(1000)).resolves.not.toThrow();
         });
 
         it('should handle data being array with deleted_count', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: [{ deleted_count: 5 }],
                 error: null,
-            });
+            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
             await expect(trimPool(1000)).resolves.not.toThrow();
         });
 
         it('should handle data not being array or deleted_count missing', async () => {
-            const mockSupabase = require('../supabase').supabase;
+            const mockSupabase = jest.mocked(supabase);
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: [{ other_field: 5 }],
                 error: null,
-            });
+            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
             await expect(trimPool(1000)).resolves.not.toThrow();
         });

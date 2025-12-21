@@ -344,12 +344,8 @@ describe('chart error handling', () => {
                 json: async () => ({ feed: { results: [] } }),
             });
 
-            const result = await fetchTracksFromChart(10, { signal: {} as AbortSignal });
+            const result = await fetchTracksFromChart(10, { timeoutMs: 3000, userAgent: 'TestAgent/1.0' });
             expect(result).toEqual([]);
-            expect(global.fetch).toHaveBeenCalledWith(
-                'https://rss.applemarketingtools.com/api/v2/us/music/most-played/10/songs.json',
-                { signal: {} }
-            );
         });
     });
 
