@@ -14,7 +14,7 @@ module.exports = {
     "!src/**/__tests__/**",
     "!src/**/__fixtures__/**",
   ],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 80,
       functions: 80,
