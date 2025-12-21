@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NOTE:
+  本ファイルはビルドを通すためのプレースホルダーです。
+  Apple Marketing Services から取得した公式の Apple Music バッジに置き換えてください。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="40" viewBox="0 0 180 40" role="img" aria-label="Apple Music">
+  <rect x="1" y="1" width="178" height="38" rx="10" fill="#000" stroke="#000"/>
+  <text x="90" y="25" text-anchor="middle" font-size="14" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" fill="#fff">Apple Music</text>
+</svg>
