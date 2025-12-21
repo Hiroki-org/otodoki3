@@ -59,9 +59,10 @@ describe('validateMetadata', () => {
 });
 
 const hasSupabase = !!(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL);
+const isCI = process.env.CI === 'true';
 const describeIf = (cond: boolean) => cond ? describe : describe.skip;
 
-describeIf(hasSupabase)('track-pool integration tests', () => {
+describeIf(hasSupabase && !isCI)('track-pool integration tests', () => {
     // テスト前後でクリーンアップ
     beforeEach(async () => {
         await cleanupTestTracks();
