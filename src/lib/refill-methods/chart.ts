@@ -116,18 +116,22 @@ export async function fetchTracksFromChartWithRetry(
     maxDelay: number = 30000,
     jitterFactor: number = 0.5
 ): Promise<Track[]> {
+    if (maxRetries < 0) {
+        return [];
+    }
+
     let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             return await fetchTracksFromChart(limit);
         } catch (error) {
             lastError = error as Error;
-            console.error(`Attempt ${attempt} failed:`, error);
+            console.error(`Attempt ${attempt + 1} failed:`, error);
 
             if (attempt < maxRetries) {
                 // 指数バックオフ
-                const expDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
+                const expDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt));
                 // ジッター（±0.5*expDelay）
                 const jitter = (Math.random() - 0.5) * expDelay;
                 const delay = Math.max(0, Math.round(expDelay + jitter * Math.min(jitterFactor, 1)));
@@ -138,5 +142,5 @@ export async function fetchTracksFromChartWithRetry(
         }
     }
 
-    throw new Error(`Failed to fetch tracks after ${maxRetries} attempts: ${lastError?.message}`);
+    throw new Error(`Failed to fetch tracks after ${maxRetries + 1} attempts: ${lastError?.message}`);
 }

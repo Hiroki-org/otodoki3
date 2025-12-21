@@ -42,7 +42,7 @@ describe('chart refill method', () => {
                 json: async () => ({}), // json メソッドを追加
             }) as jest.Mock;
 
-            await expect(fetchTracksFromChart(10)).rejects.toThrow();
+            await expect(fetchTracksFromChart(10)).rejects.toThrow('Apple RSS Charts API request failed with status 500: Internal Server Error');
         });
 
         it.skip('タイムアウトは5秒で発生する', async () => {
@@ -121,18 +121,7 @@ describe('chart refill method', () => {
         });
 
         it('タイムアウト時はAbortErrorを投げる', async () => {
-            // AbortControllerをモックしてabortをシミュレート
-            const mockAbortController = {
-                abort: jest.fn(),
-                signal: {},
-            };
-            global.AbortController = jest.fn().mockImplementation(() => mockAbortController);
-
-            global.fetch = jest.fn().mockImplementation(() => {
-                // すぐにabortを呼ぶ
-                mockAbortController.abort();
-                return Promise.reject(new Error('Aborted'));
-            }) as jest.Mock;
+            global.fetch = jest.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'));
 
             await expect(fetchTracksFromChart(10, { timeoutMs: 1 })).rejects.toThrow('Request to Apple RSS Charts API timed out.');
         });
@@ -149,7 +138,7 @@ describe('chart refill method', () => {
                 return {
                     ok: true,
                     status: 200,
-                    json: async () => ({ feed: { results: [] } }),
+                    json: async () => ({ feed: { results: [{ id: '1', name: 't', artistName: 'a', url: 'u' }] } }),
                 };
             }) as jest.Mock;
 
@@ -164,7 +153,7 @@ describe('chart refill method', () => {
                 statusText: 'Too Many Requests',
             }) as jest.Mock;
 
-            await expect(fetchTracksFromChartWithRetry(10, 2)).rejects.toThrow();
+            await expect(fetchTracksFromChartWithRetry(10, 2)).rejects.toThrow('Failed to fetch tracks after 3 attempts: Apple RSS Charts API rate limit exceeded. Please try again later.');
         });
 
         it('500 エラーでもリトライする', async () => {
@@ -177,7 +166,7 @@ describe('chart refill method', () => {
                 return {
                     ok: true,
                     status: 200,
-                    json: async () => ({ feed: { results: [] } }),
+                    json: async () => ({ feed: { results: [{ id: '1', name: 't', artistName: 'a', url: 'u' }] } }),
                 };
             }) as jest.Mock;
 
@@ -194,6 +183,10 @@ describe('chart refill method', () => {
 
             const tracks = await fetchTracksFromChartWithRetry();
             expect(tracks).toEqual([]);
+            expect(global.fetch).toHaveBeenCalledWith(
+                'https://rss.applemarketingtools.com/api/v2/jp/music/most-played/50/songs',
+                expect.any(Object)
+            );
         });
 
         it('最終エラーのメッセージを含む例外を投げる', async () => {
@@ -203,7 +196,7 @@ describe('chart refill method', () => {
                 statusText: 'Too Many Requests',
             }) as jest.Mock;
 
-            await expect(fetchTracksFromChartWithRetry(10, 1)).rejects.toThrow('Failed to fetch tracks after 1 attempts: Too Many Requests');
+            await expect(fetchTracksFromChartWithRetry(10, 1)).rejects.toThrow('Failed to fetch tracks after 2 attempts: Apple RSS Charts API rate limit exceeded. Please try again later.');
         });
     });
 });
@@ -227,26 +220,13 @@ describe('chart error handling', () => {
                 statusText: 'Not Found',
             });
 
-            await expect(fetchTracksFromChart(10)).rejects.toThrow('HTTP 404: Not Found');
+            await expect(fetchTracksFromChart(10)).rejects.toThrow('Apple RSS Charts API request failed with status 404: Not Found');
         });
 
         it('should handle timeout via AbortController', async () => {
-            const mockAbortController = {
-                signal: {},
-                abort: jest.fn(),
-            };
-            global.AbortController = jest.fn().mockImplementation(() => mockAbortController);
+            global.fetch = jest.fn().mockRejectedValue(new DOMException('Aborted by user', 'AbortError'));
 
-            global.fetch = jest.fn().mockImplementation(() => {
-                return new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Aborted')), 100);
-                });
-            });
-
-            const promise = fetchTracksFromChart(10);
-            mockAbortController.abort();
-
-            await expect(promise).rejects.toThrow('Aborted');
+            await expect(fetchTracksFromChart(10)).rejects.toThrow('Request to Apple RSS Charts API timed out.');
         });
 
         it('should handle json parse error', async () => {
@@ -322,6 +302,7 @@ describe('chart error handling', () => {
                             id: '123',
                             name: undefined,
                             artistName: undefined,
+                            artworkUrl100: 'http://example.com/art.jpg',
                             url: 'https://example.com',
                         }]
                     }
@@ -333,7 +314,13 @@ describe('chart error handling', () => {
                 track_id: '123',
                 track_name: undefined,
                 artist_name: undefined,
+                collection_name: undefined,
                 preview_url: 'https://example.com',
+                artwork_url: 'http://example.com/art.jpg',
+                track_view_url: 'https://example.com',
+                genre: undefined,
+                release_date: undefined,
+                metadata: { source: 'apple_rss', fetched_from: 'chart' },
             }]);
         });
 
@@ -344,16 +331,18 @@ describe('chart error handling', () => {
                 json: async () => ({ feed: { results: [] } }),
             });
 
-            const result = await fetchTracksFromChart(10, { timeoutMs: 3000, userAgent: 'TestAgent/1.0' });
-            expect(result).toEqual([]);
+            await fetchTracksFromChart(10, { timeoutMs: 3000, userAgent: 'TestAgent/1.0' });
+            expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+                headers: { 'User-Agent': 'TestAgent/1.0' }
+            }));
         });
     });
 
     describe('fetchTracksFromChartWithRetry', () => {
         it('should handle AbortError', async () => {
-            global.fetch = jest.fn().mockRejectedValue(new Error('Aborted'));
+            global.fetch = jest.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'));
 
-            await expect(fetchTracksFromChartWithRetry(10, 1)).rejects.toThrow('Aborted');
+            await expect(fetchTracksFromChartWithRetry(10, 1)).rejects.toThrow('Failed to fetch tracks after 2 attempts: Request to Apple RSS Charts API timed out.');
         });
 
         it('should handle default parameters', async () => {
@@ -366,12 +355,13 @@ describe('chart error handling', () => {
             const result = await fetchTracksFromChartWithRetry();
             expect(result).toEqual([]);
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://rss.applemarketingtools.com/api/v2/us/music/most-played/100/songs.json',
+                'https://rss.applemarketingtools.com/api/v2/jp/music/most-played/50/songs',
                 expect.any(Object)
             );
         });
 
         it('should handle retry with exponential backoff', async () => {
+            jest.useFakeTimers();
             let attempts = 0;
             global.fetch = jest.fn().mockImplementation(async () => {
                 attempts++;
@@ -381,16 +371,19 @@ describe('chart error handling', () => {
                 return {
                     ok: true,
                     status: 200,
-                    json: async () => ({ feed: { results: [] } }),
+                    json: async () => ({ feed: { results: [{ id: '1', name: 't', artistName: 'a', url: 'u' }] } }),
                 };
             });
 
-            const startTime = Date.now();
-            await fetchTracksFromChartWithRetry(10, 3);
-            const endTime = Date.now();
+            const promise = fetchTracksFromChartWithRetry(10, 2, 100);
+            
+            // Fast-forward timers to allow retries to execute
+            await jest.advanceTimersByTimeAsync(100 + 200);
+
+            await promise;
 
             expect(attempts).toBe(3);
-            expect(endTime - startTime).toBeGreaterThanOrEqual(100); // At least some delay
+            jest.useRealTimers();
         });
 
         it('should handle maxRetries being 0', async () => {
@@ -400,18 +393,16 @@ describe('chart error handling', () => {
                 statusText: 'Internal Server Error',
             });
 
-            await expect(fetchTracksFromChartWithRetry(10, 0)).rejects.toThrow('Failed to fetch tracks after 0 attempts: Internal Server Error');
+            await expect(fetchTracksFromChartWithRetry(10, 0)).rejects.toThrow('Failed to fetch tracks after 1 attempts: Apple RSS Charts API request failed with status 500: Internal Server Error');
+            expect(global.fetch).toHaveBeenCalledTimes(1);
         });
 
         it('should handle negative maxRetries', async () => {
-            global.fetch = jest.fn().mockResolvedValue({
-                ok: true,
-                status: 200,
-                json: async () => ({ feed: { results: [] } }),
-            });
+            global.fetch = jest.fn();
 
             const result = await fetchTracksFromChartWithRetry(10, -1);
             expect(result).toEqual([]);
+            expect(global.fetch).not.toHaveBeenCalled();
         });
     });
 });

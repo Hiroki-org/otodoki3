@@ -4,32 +4,32 @@ import type { Track } from '@/types/track-pool';
 import { supabase } from '../supabase';
 
 // Mock supabase
-jest.mock('../supabase', () => ({
-    supabase: {
-        from: jest.fn(() => ({
-            select: jest.fn(() => ({
-                order: jest.fn(() => ({
-                    limit: jest.fn(() => ({
-                        data: null,
-                        error: null,
-                    })),
-                })),
-                count: jest.fn(() => ({
-                    data: null,
-                    error: null,
-                })),
-            })),
-            upsert: jest.fn(() => ({
-                data: null,
-                error: null,
-            })),
-        })),
-        rpc: jest.fn(() => ({
-            data: null,
-            error: null,
-        })),
-    },
-}));
+jest.mock('../supabase', () => {
+    const fromInstance = {
+        select: jest.fn(),
+        upsert: jest.fn(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+    };
+
+    fromInstance.select.mockImplementation((_columns, options) => {
+        if (options?.head) {
+            return Promise.resolve({ count: 1, error: null });
+        }
+        // Defaults to a resolved promise with empty data for getTracksFromPool
+        return Promise.resolve({ data: [], error: null });
+    });
+    fromInstance.upsert.mockResolvedValue({ error: null });
+
+
+    return {
+        supabase: {
+            from: jest.fn(() => fromInstance),
+            rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+        },
+    };
+});
+
 
 describe('validateMetadata', () => {
     it('should return null for null or undefined', () => {
@@ -77,22 +77,24 @@ describe('TRACK_POOL_MAX_SIZE', () => {
     beforeEach(() => {
         jest.resetModules();
         process.env = { ...originalEnv };
+        // As supabase is mocked, we need to clear mocks to avoid conflicts
+        jest.clearAllMocks();
     });
 
     afterEach(() => {
         process.env = originalEnv;
     });
 
-    it('should use default value when env var is not set', () => {
+    it('should use default value when env var is not set', async () => {
         delete process.env.TRACK_POOL_MAX_SIZE;
         // Since TRACK_POOL_MAX_SIZE is a const, we test by calling trimPool with default value
-        expect(() => trimPool(10000)).not.toThrow();
+        await expect(trimPool(10000)).resolves.not.toThrow();
     });
 
-    it('should use env var value when set', () => {
+    it('should use env var value when set', async () => {
         process.env.TRACK_POOL_MAX_SIZE = '5000';
         // Since TRACK_POOL_MAX_SIZE is a const, we test by calling trimPool with env value
-        expect(() => trimPool(5000)).not.toThrow();
+        await expect(trimPool(5000)).resolves.not.toThrow();
     });
 });
 
@@ -110,6 +112,7 @@ describe('track-pool', () => {
         if (hasSupabaseCredentials) {
             await cleanupTestData(testTrackIds);
         }
+        jest.clearAllMocks();
     });
 
     describeIfSupabase('addTracksToPool', () => {
@@ -191,31 +194,18 @@ describe('track-pool error handling', () => {
     describe('getTracksFromPool', () => {
         it('should handle supabase error', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockReturnValueOnce({
-                    order: jest.fn().mockReturnValueOnce({
-                        limit: jest.fn().mockResolvedValueOnce({
-                            data: null,
-                            error: { message: 'Database error' },
-                        }),
-                    }),
-                }),
+            (mockSupabase.from('track_pool').select().order().limit as jest.Mock).mockResolvedValueOnce({
+                data: null,
+                error: { message: 'Database error' },
             });
-
             await expect(getTracksFromPool(10)).rejects.toThrow('Failed to fetch tracks from pool: Database error');
         });
 
         it('should return empty array when data is null', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockReturnValueOnce({
-                    order: jest.fn().mockReturnValueOnce({
-                        limit: jest.fn().mockResolvedValueOnce({
-                            data: null,
-                            error: null,
-                        }),
-                    }),
-                }),
+            (mockSupabase.from('track_pool').select().order().limit as jest.Mock).mockResolvedValueOnce({
+                data: null,
+                error: null,
             });
 
             const result = await getTracksFromPool(10);
@@ -237,15 +227,9 @@ describe('track-pool error handling', () => {
                 metadata: { key: 'value' },
             }];
 
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockReturnValueOnce({
-                    order: jest.fn().mockReturnValueOnce({
-                        limit: jest.fn().mockResolvedValueOnce({
-                            data: mockData,
-                            error: null,
-                        }),
-                    }),
-                }),
+            (mockSupabase.from('track_pool').select().order().limit as jest.Mock).mockResolvedValueOnce({
+                data: mockData,
+                error: null,
             });
 
             const result = await getTracksFromPool(10);
@@ -267,15 +251,9 @@ describe('track-pool error handling', () => {
                 metadata: 'invalid',
             }];
 
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockReturnValueOnce({
-                    order: jest.fn().mockReturnValueOnce({
-                        limit: jest.fn().mockResolvedValueOnce({
-                            data: mockData,
-                            error: null,
-                        }),
-                    }),
-                }),
+            (mockSupabase.from('track_pool').select().order().limit as jest.Mock).mockResolvedValueOnce({
+                data: mockData,
+                error: null,
             });
 
             const result = await getTracksFromPool(10);
@@ -286,11 +264,9 @@ describe('track-pool error handling', () => {
     describe('addTracksToPool', () => {
         it('should handle supabase upsert error', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                upsert: jest.fn().mockResolvedValueOnce({
-                    data: null,
-                    error: { message: 'Upsert error' },
-                }),
+            (mockSupabase.from('track_pool').upsert as jest.Mock).mockResolvedValueOnce({
+                data: null,
+                error: { message: 'Upsert error' },
             });
 
             const tracks: Track[] = [{
@@ -305,11 +281,9 @@ describe('track-pool error handling', () => {
 
         it('should handle tracks with null fields', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                upsert: jest.fn().mockResolvedValueOnce({
-                    data: null,
-                    error: null,
-                }),
+            (mockSupabase.from('track_pool').upsert as jest.Mock).mockResolvedValueOnce({
+                data: null,
+                error: null,
             });
 
             const tracks: Track[] = [{
@@ -330,11 +304,9 @@ describe('track-pool error handling', () => {
 
         it('should handle options being undefined', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                upsert: jest.fn().mockResolvedValueOnce({
-                    data: null,
-                    error: null,
-                }),
+            (mockSupabase.from('track_pool').upsert as jest.Mock).mockResolvedValueOnce({
+                data: null,
+                error: null,
             });
 
             const tracks: Track[] = [{
@@ -351,16 +323,9 @@ describe('track-pool error handling', () => {
     describe('getPoolSize', () => {
         it('should handle supabase error', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockImplementationOnce((columns, options) => {
-                    if (options && options.count === 'exact') {
-                        return {
-                            count: null,
-                            error: { message: 'Count error' },
-                        };
-                    }
-                    return {};
-                }),
+            (mockSupabase.from('track_pool').select as jest.Mock).mockResolvedValueOnce({
+                count: null,
+                error: { message: 'Count error' },
             });
 
             await expect(getPoolSize()).rejects.toThrow('Failed to get pool size: Count error');
@@ -368,16 +333,9 @@ describe('track-pool error handling', () => {
 
         it('should return 0 when count is null', async () => {
             const mockSupabase = jest.mocked(supabase);
-            mockSupabase.from.mockReturnValueOnce({
-                select: jest.fn().mockImplementationOnce((columns, options) => {
-                    if (options && options.count === 'exact') {
-                        return {
-                            count: null,
-                            error: null,
-                        };
-                    }
-                    return {};
-                }),
+            (mockSupabase.from('track_pool').select as jest.Mock).mockResolvedValueOnce({
+                count: null,
+                error: null,
             });
 
             const result = await getPoolSize();
@@ -391,7 +349,7 @@ describe('track-pool error handling', () => {
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: null,
                 error: { message: 'RPC error' },
-            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            });
 
             await expect(trimPool(1000)).rejects.toThrow('Failed to trim track pool: RPC error');
         });
@@ -408,7 +366,7 @@ describe('track-pool error handling', () => {
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: [{ deleted_count: 5 }],
                 error: null,
-            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            });
 
             await expect(trimPool(1000)).resolves.not.toThrow();
         });
@@ -418,9 +376,10 @@ describe('track-pool error handling', () => {
             mockSupabase.rpc.mockResolvedValueOnce({
                 data: [{ other_field: 5 }],
                 error: null,
-            } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            });
 
             await expect(trimPool(1000)).resolves.not.toThrow();
         });
     });
 });
+
