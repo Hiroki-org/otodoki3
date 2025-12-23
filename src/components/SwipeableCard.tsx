@@ -8,8 +8,8 @@ import { TrackCard } from "./TrackCard";
 const ROTATE_INPUT_RANGE_PX = 200;
 const ROTATE_OUTPUT_RANGE_DEG = 30;
 
-const OPACITY_INPUT_RANGE_PX = [-200, -150, 0, 150, 200] as const;
-const OPACITY_OUTPUT_RANGE = [0, 1, 1, 1, 0] as const;
+const OPACITY_INPUT_RANGE_PX: number[] = [-200, -150, 0, 150, 200];
+const OPACITY_OUTPUT_RANGE: number[] = [0, 1, 1, 1, 0];
 
 const SWIPE_THRESHOLD_SCREEN_WIDTH_RATIO = 0.25;
 const VELOCITY_THRESHOLD_PX_PER_SEC = 200;
