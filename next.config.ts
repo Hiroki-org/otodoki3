@@ -1,4 +1,4 @@
-import withPWA from "@ducanh2912/next-pwa";
+import withPWA, { type PluginOptions } from "@ducanh2912/next-pwa";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -11,4 +11,4 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-} as any)(nextConfig);
+} as PluginOptions)(nextConfig);
