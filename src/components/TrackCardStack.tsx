@@ -6,11 +6,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Track, CardItem } from "../types/track-pool";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useAutoRefill } from "../hooks/useAutoRefill";
-import { SwipeableCard } from "./SwipeableCard";
+import { SwipeableCard, SwipeableCardRef } from "./SwipeableCard";
 import { AudioProgressBar } from "./AudioProgressBar";
 
 type SwipeDirection = "left" | "right";
 
+/**
+ * トラックカードのスタックを管理して表示するコンポーネント。
+ *
+ * スタックはチュートリアルカードを先頭にしたカード群（トラックカードを含む）を保持し、
+ * 最上位カードのプレビュー再生、スワイプによる「いいね/スキップ」操作、補充（refill）と重複除外、
+ * 再生進捗・補充中・エラー表示、ならびに画面下部のいいね/よくないボタンを提供します。
+ * 自動再生はユーザーが初回インタラクションを行った後にのみ開始されます。
+ *
+ * @param tracks - 表示するトラックの配列（各要素は Track）。チュートリアルカードとともに初期スタックを構成します。
+ * @returns コンポーネントのレンダリング結果（React 要素）
+ */
 export function TrackCardStack({ tracks }: { tracks: Track[] }) {
   // ライブラリ選定理由:
   // - react-tinder-card は peerDependencies が react@^16.8 || ^17 || ^18 までで、react@19 と依存解決が衝突する可能性が高い
@@ -24,6 +35,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
   const [stack, setStack] = useState<CardItem[]>(initialStack);
   const { play, stop, pause, resume, isPlaying, progress } = useAudioPlayer();
   const hasUserInteractedRef = useRef(false);
+  const topCardRef = useRef<SwipeableCardRef>(null);
 
   const handleRefill = useCallback((newTracks: CardItem[]) => {
     setStack((prev) => {
@@ -150,6 +162,16 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     }
   };
 
+  const handleDislikeClick = () => {
+    hasUserInteractedRef.current = true;
+    topCardRef.current?.swipeLeft();
+  };
+
+  const handleLikeClick = () => {
+    hasUserInteractedRef.current = true;
+    topCardRef.current?.swipeRight();
+  };
+
   if (stack.length === 0) {
     return (
       <div className="flex h-[70vh] max-h-140 w-[92vw] max-w-sm items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
@@ -190,27 +212,71 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
           楽曲を補充中...
         </div>
       )}
-      <AnimatePresence initial={false}>
-        {stack.map((item, index) => {
-          const isTop = index === 0;
 
-          return (
-            <SwipeableCard
-              key={
-                "type" in item && item.type === "tutorial"
-                  ? item.id
-                  : item.track_id
-              }
-              item={item}
-              isTop={isTop}
-              index={index}
-              onSwipe={swipeTop}
-              isPlaying={isTop ? isPlaying : undefined}
-              onPlayPause={isTop ? handlePlayPauseClick : undefined}
+      {/* カードスタック */}
+      <div className="relative h-full">
+        <AnimatePresence initial={false}>
+          {stack.map((item, index) => {
+            const isTop = index === 0;
+
+            return (
+              <SwipeableCard
+                key={
+                  "type" in item && item.type === "tutorial"
+                    ? item.id
+                    : item.track_id
+                }
+                ref={isTop ? topCardRef : null}
+                item={item}
+                isTop={isTop}
+                index={index}
+                onSwipe={swipeTop}
+                isPlaying={isTop ? isPlaying : undefined}
+                onPlayPause={isTop ? handlePlayPauseClick : undefined}
+              />
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {/* Like/Dislikeボタン */}
+      <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-8 z-[300]">
+        <button
+          type="button"
+          onClick={handleDislikeClick}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+          aria-label="よくない"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-8 w-8"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+              clipRule="evenodd"
             />
-          );
-        })}
-      </AnimatePresence>
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLikeClick}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+          aria-label="いいね"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-8 w-8"
+          >
+            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
