@@ -7,9 +7,11 @@ import {
   PanInfo,
   animate,
 } from "framer-motion";
+import { flushSync } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import type { Track } from "../types/track-pool";
+import type { CardItem, Track } from "../types/track-pool";
 import { TrackCard } from "./TrackCard";
+import { TutorialCard } from "./TutorialCard";
 
 const ROTATE_INPUT_RANGE_PX = 200;
 const ROTATE_OUTPUT_RANGE_DEG = 30;
@@ -21,7 +23,6 @@ const SWIPE_THRESHOLD_SCREEN_WIDTH_RATIO = 0.25;
 const VELOCITY_THRESHOLD_PX_PER_SEC = 200;
 
 const EXIT_X_OFFSET_PX = 500;
-const ON_SWIPE_DELAY_MS = 10; // exitX state update → exit animation uses it
 
 const DRAG_ELASTIC = 0.2;
 const WHILE_DRAG_SCALE = 1.05;
@@ -37,9 +38,9 @@ const SNAP_BACK_SPRING = {
 } as const;
 
 interface SwipeableCardProps {
-  track: Track;
+  track: CardItem;
   isTop: boolean;
-  onSwipe: (direction: "left" | "right", track: Track) => void;
+  onSwipe: (direction: "left" | "right", item: CardItem) => void;
   index: number;
 }
 
@@ -51,42 +52,20 @@ export function SwipeableCard({
 }: SwipeableCardProps) {
   const [exitX, setExitX] = useState<number | null>(null);
   const x = useMotionValue(0);
-  const onSwipeTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-
-  useEffect(() => {
-    return () => {
-      if (onSwipeTimeoutIdRef.current) {
-        clearTimeout(onSwipeTimeoutIdRef.current);
-        onSwipeTimeoutIdRef.current = null;
-      }
-    };
-  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isTop) return;
 
     if (e.key === "ArrowLeft") {
-      if (onSwipeTimeoutIdRef.current) {
-        clearTimeout(onSwipeTimeoutIdRef.current);
-        onSwipeTimeoutIdRef.current = null;
-      }
-      setExitX(-EXIT_X_OFFSET_PX);
-      onSwipeTimeoutIdRef.current = setTimeout(
-        () => onSwipe("left", track),
-        ON_SWIPE_DELAY_MS
-      );
+      flushSync(() => {
+        setExitX(-EXIT_X_OFFSET_PX);
+      });
+      onSwipe("left", track);
     } else if (e.key === "ArrowRight") {
-      if (onSwipeTimeoutIdRef.current) {
-        clearTimeout(onSwipeTimeoutIdRef.current);
-        onSwipeTimeoutIdRef.current = null;
-      }
-      setExitX(EXIT_X_OFFSET_PX);
-      onSwipeTimeoutIdRef.current = setTimeout(
-        () => onSwipe("right", track),
-        ON_SWIPE_DELAY_MS
-      );
+      flushSync(() => {
+        setExitX(EXIT_X_OFFSET_PX);
+      });
+      onSwipe("right", track);
     }
   };
 
@@ -120,23 +99,16 @@ export function SwipeableCard({
       isLeft &&
       (offset < -swipeThreshold || velocity < -VELOCITY_THRESHOLD_PX_PER_SEC);
 
-    if (onSwipeTimeoutIdRef.current) {
-      clearTimeout(onSwipeTimeoutIdRef.current);
-      onSwipeTimeoutIdRef.current = null;
-    }
-
     if (swipedRight) {
-      setExitX(EXIT_X_OFFSET_PX);
-      onSwipeTimeoutIdRef.current = setTimeout(
-        () => onSwipe("right", track),
-        ON_SWIPE_DELAY_MS
-      );
+      flushSync(() => {
+        setExitX(EXIT_X_OFFSET_PX);
+      });
+      onSwipe("right", track);
     } else if (swipedLeft) {
-      setExitX(-EXIT_X_OFFSET_PX);
-      onSwipeTimeoutIdRef.current = setTimeout(
-        () => onSwipe("left", track),
-        ON_SWIPE_DELAY_MS
-      );
+      flushSync(() => {
+        setExitX(-EXIT_X_OFFSET_PX);
+      });
+      onSwipe("left", track);
     } else {
       animate(x, 0, SNAP_BACK_SPRING);
     }
@@ -169,10 +141,18 @@ export function SwipeableCard({
         opacity: 0,
         transition: { duration: EXIT_DURATION_SEC },
       }}
-      aria-label={`${track.track_name} by ${track.artist_name}をスワイプ`}
+      aria-label={
+        "type" in track && track.type === "tutorial"
+          ? "チュートリアルカードをスワイプ"
+          : `${track.track_name} by ${track.artist_name}をスワイプ`
+      }
       tabIndex={isTop ? 0 : -1}
     >
-      <TrackCard track={track} />
+      {"type" in track && track.type === "tutorial" ? (
+        <TutorialCard />
+      ) : (
+        <TrackCard track={track as Track} />
+      )}
     </motion.button>
   );
 }

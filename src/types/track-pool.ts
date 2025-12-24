@@ -29,3 +29,10 @@ export interface Track {
     release_date?: string;
     metadata?: Record<string, unknown>;
 }
+
+export interface TutorialCard {
+    type: 'tutorial';
+    id: string;
+}
+
+export type CardItem = Track | TutorialCard;
