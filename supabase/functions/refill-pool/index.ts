@@ -5,41 +5,47 @@ const USER_AGENT = "otodoki3/1.0 (Supabase Edge Function)";
 const TIMEOUT_MS = 10000;
 
 interface AppleRssTrack {
-  id: string;
-  name: string;
-  artistName: string;
-  collectionName?: string;
-  url: string;
-  artworkUrl100?: string;
-  genres?: { name: string }[];
-  releaseDate?: string;
+    id: string;
+    name: string;
+    artistName: string;
+    collectionName?: string;
+    url: string;
+    artworkUrl100?: string;
+    genres?: { name: string }[];
+    releaseDate?: string;
 }
 
 interface TrackPoolEntry {
-  track_id: string;
-  track_name: string;
-  artist_name: string;
-  collection_name: string | null;
-  preview_url: string;
-  artwork_url: string | null;
-  track_view_url: string | null;
-  genre: string | null;
-  release_date: string | null;
-  metadata: {
-    source: string;
-    fetched_from: string;
-    refilled_at: string;
-  };
-  fetched_at: string;
+    track_id: string;
+    track_name: string;
+    artist_name: string;
+    collection_name: string | null;
+    preview_url: string;
+    artwork_url: string | null;
+    track_view_url: string | null;
+    genre: string | null;
+    release_date: string | null;
+    metadata: {
+        source: string;
+        fetched_from: string;
+        refilled_at: string;
+    };
+    fetched_at: string;
 }
 
 Deno.serve(async (req: Request) => {
     const startTime = Date.now();
 
-    // Authorization check - verify Bearer token against service role key
+    // Authorization check - verify Bearer token against CRON_AUTH_KEY
     const authHeader = req.headers.get('Authorization');
     const cronAuthKey = Deno.env.get('CRON_AUTH_KEY');
-    if (!cronAuthKey || authHeader !== `Bearer ${cronAuthKey}`) {
+    const expectedAuth = `Bearer ${cronAuthKey}`;
+
+    const encoder = new TextEncoder();
+    const authBytes = encoder.encode(authHeader || '');
+    const expectedBytes = encoder.encode(expectedAuth);
+
+    if (!cronAuthKey || authBytes.length !== expectedBytes.length || !crypto.subtle.timingSafeEqual(authBytes, expectedBytes)) {
         console.error('Unauthorized request');
         return new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
