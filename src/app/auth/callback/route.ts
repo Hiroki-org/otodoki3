@@ -35,12 +35,17 @@ export async function GET(request: Request) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
+        if (error) {
+            console.error('OAuth code exchange failed:', error.message)
+        }
+
         if (!error) {
             // Get redirect host - validate x-forwarded-host against allowlist
             const forwardedHost = request.headers.get('x-forwarded-host');
             const forwardedProto = request.headers.get('x-forwarded-proto');
             
             // Parse allowed hosts from environment
+            // If ALLOWED_HOSTS is not set, forwarded host headers will be ignored for security
             const allowedHosts = process.env.ALLOWED_HOSTS?.split(',').map(h => h.trim().toLowerCase()) ?? [];
             
             let redirectHost = origin; // Default to current origin
@@ -49,8 +54,8 @@ export async function GET(request: Request) {
                 const lowerForwardedHost = forwardedHost.toLowerCase();
                 // Only use forwardedHost if it's in the allowlist
                 if (allowedHosts.length > 0 && allowedHosts.includes(lowerForwardedHost)) {
-                    // Sanitize proto to only allow 'https' or 'http'
-                    const proto = forwardedProto === 'https' ? 'https' : 'http';
+                    // Sanitize proto to only allow 'https' or 'http' (default to https)
+                    const proto = forwardedProto === 'http' ? 'http' : 'https';
                     redirectHost = `${proto}://${forwardedHost}`;
                 }
                 // If allowlist is empty or host is not in it, fallback to origin

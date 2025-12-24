@@ -7,7 +7,7 @@ export default async function WaitlistPage() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
 
-  if (error) {
+  if (error || !data.user) {
     console.error("Error getting user:", error);
     redirect("/login");
   }
