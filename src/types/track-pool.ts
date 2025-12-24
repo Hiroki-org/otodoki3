@@ -18,6 +18,7 @@ export interface RefillConfig {
 }
 
 export interface Track {
+    type: 'track';  // ← 追加
     track_id: string;
     track_name: string;
     artist_name: string;
@@ -29,3 +30,10 @@ export interface Track {
     release_date?: string;
     metadata?: Record<string, unknown>;
 }
+
+export interface TutorialCard {
+    type: 'tutorial';
+    id: string;
+}
+
+export type CardItem = Track | TutorialCard;
