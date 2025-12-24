@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.mzstatic.com',
+      },
+    ],
+  },
 };
 
 export default withPWA({

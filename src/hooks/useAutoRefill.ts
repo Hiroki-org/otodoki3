@@ -8,7 +8,8 @@ const FETCH_TIMEOUT_MS = 10000; // fetch タイムアウト時間（ミリ秒）
 
 export function useAutoRefill(
     stack: CardItem[],
-    onRefill: (newTracks: CardItem[]) => void
+    onRefill: (newTracks: CardItem[]) => void,
+    disableRefill: boolean = false
 ) {
     const [isRefilling, setIsRefilling] = useState(false);
     const [error, setError] = useState<Error | null>(null);
@@ -79,7 +80,9 @@ export function useAutoRefill(
     }, []);
 
     useEffect(() => {
-        // 閾値以下かつ補充中でない場合
+        // disableRefill または 閾値以下かつ補充中でない場合
+        if (disableRefill) return; // プレイリストモード時は補充を実行しない
+
         if (stack.length <= REFILL_THRESHOLD && !isRefilling && !hasRequestedRef.current) {
             hasRequestedRef.current = true;
             refillTracks();
@@ -89,7 +92,7 @@ export function useAutoRefill(
         if (stack.length > REFILL_THRESHOLD) {
             hasRequestedRef.current = false;
         }
-    }, [stack.length, isRefilling, refillTracks]);
+    }, [stack.length, isRefilling, refillTracks, disableRefill]);
 
     return { isRefilling, error, clearError };
 }
