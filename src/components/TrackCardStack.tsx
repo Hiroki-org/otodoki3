@@ -21,11 +21,10 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
   ];
 
   const [stack, setStack] = useState<CardItem[]>(initialStack);
-  const { play, stop, progress } = useAudioPlayer();
+  const { play, stop, pause, resume, isPlaying, progress } = useAudioPlayer();
   const hasUserInteractedRef = useRef(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStack((prev) => (prev.length === 0 ? initialStack : prev));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks]);
@@ -94,6 +93,33 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     });
   };
 
+  const handlePlayPauseClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    // 初回インタラクション時のフラグをON
+    hasUserInteractedRef.current = true;
+
+    if (isPlaying) {
+      pause();
+    } else {
+      // 再生中でない場合、最上位カードの曲を再生（または再開）
+      const top = stack[0];
+      if (!top) return;
+
+      // チュートリアルカードの場合はスキップ
+      if ("type" in top && top.type === "tutorial") return;
+
+      // 楽曲カードの場合、preview_urlがあれば再生または再開
+      if ("track_id" in top && top.preview_url) {
+        // progress > 0 で判定して resume()/play() を分岐
+        if (progress > 0) {
+          resume();
+        } else {
+          play(top.preview_url);
+        }
+      }
+    }
+  };
+
   if (stack.length === 0) {
     return (
       <div className="flex h-[70vh] max-h-140 w-[92vw] max-w-sm items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
@@ -122,6 +148,8 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
               isTop={isTop}
               index={index}
               onSwipe={swipeTop}
+              isPlaying={isTop ? isPlaying : undefined}
+              onPlayPause={isTop ? handlePlayPauseClick : undefined}
             />
           );
         })}

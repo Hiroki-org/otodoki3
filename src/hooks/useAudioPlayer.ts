@@ -24,6 +24,29 @@ export function useAudioPlayer() {
         setState((prev) => ({ ...prev, isPlaying: false, progress: 0 }));
     }, []);
 
+    const pause = useCallback(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        audio.pause();
+        setState((prev) => ({ ...prev, isPlaying: false }));
+    }, []);
+
+    const resume = useCallback(() => {
+        const audio = audioRef.current;
+        if (!audio || !audio.src) return;
+
+        const playPromise = audio.play();
+        setState((prev) => ({ ...prev, isPlaying: true }));
+
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch((err) => {
+                console.error("Failed to resume audio", err);
+                setState((prev) => ({ ...prev, isPlaying: false }));
+            });
+        }
+    }, []);
+
     const play = useCallback(
         (previewUrl: string) => {
             const audio = audioRef.current;
@@ -59,19 +82,31 @@ export function useAudioPlayer() {
         audio.preload = "auto";
         audioRef.current = audio;
 
+        let rafId: number | null = null;
         const handleTimeUpdate = () => {
-            const duration = audio.duration;
-            const currentTime = audio.currentTime;
-            const progress =
-                Number.isFinite(duration) && duration > 0
-                    ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
-                    : 0;
+            // requestAnimationFrameで更新頻度を調整し、カクつきを防ぐ
+            if (rafId !== null) return;
 
-            setState((prev) => (prev.progress === progress ? prev : { ...prev, progress }));
+            rafId = requestAnimationFrame(() => {
+                const duration = audio.duration;
+                const currentTime = audio.currentTime;
+                const progress =
+                    Number.isFinite(duration) && duration > 0
+                        ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
+                        : 0;
+
+                setState((prev) => (prev.progress === progress ? prev : { ...prev, progress }));
+                rafId = null;
+            });
         };
 
         const handleEnded = () => {
-            setState((prev) => ({ ...prev, isPlaying: false, progress: 100 }));
+            // ループ再生: 先頭に戻して再度再生
+            audio.currentTime = 0;
+            audio.play().catch((err) => {
+                console.error("Failed to loop preview audio", err);
+                setState((prev) => ({ ...prev, isPlaying: false, progress: 100 }));
+            });
         };
 
         const handleError = () => {
@@ -98,6 +133,9 @@ export function useAudioPlayer() {
         audio.addEventListener("pause", handlePause);
 
         return () => {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
             audio.pause();
             audio.removeEventListener("timeupdate", handleTimeUpdate);
             audio.removeEventListener("ended", handleEnded);
@@ -112,6 +150,8 @@ export function useAudioPlayer() {
         audioRef,
         play,
         stop,
+        pause,
+        resume,
         isPlaying: state.isPlaying,
         progress: state.progress,
     };
