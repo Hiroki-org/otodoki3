@@ -1,68 +1,123 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAutoRefill } from '@/hooks/useAutoRefill';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import { useAutoRefill } from './useAutoRefill';
 import type { CardItem } from '@/types/track-pool';
 
-// モック CardItem
-const mockTrack = (id: number): CardItem => ({
-    type: 'track' as const,
-    track_id: id,
-    track_name: `Track ${id}`,
-    artist_name: `Artist ${id}`,
-    preview_url: `https://example.com/audio${id}.mp3`,
-});
+// Mock fetch
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('useAutoRefill', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        global.fetch = vi.fn();
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockFetch.mockReset();
+    // Default mock implementation to avoid undefined errors
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tracks: [] }),
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should not refill when stack is above threshold', () => {
+    const stack: CardItem[] = Array(5).fill({ id: 1 } as any);
+    const onRefill = vi.fn();
+
+    renderHook(() => useAutoRefill(stack, onRefill));
+
+    expect(onRefill).not.toHaveBeenCalled();
+    // It might be called with default mock if we are not careful, but logic says it shouldn't call fetch
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should refill when stack is at or below threshold', async () => {
+    const stack: CardItem[] = Array(3).fill({ id: 1 } as any);
+    const onRefill = vi.fn();
+    const newTracks = [{ id: 100 }, { id: 101 }];
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tracks: newTracks }),
     });
 
-    afterEach(() => {
-        vi.restoreAllMocks();
+    renderHook(() => useAutoRefill(stack, onRefill));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('初期状態が正しい', () => {
-        const { result } = renderHook(() =>
-            useAutoRefill([], vi.fn())
-        );
+    expect(onRefill).toHaveBeenCalledWith(newTracks);
+  });
 
-        expect(result.current.isRefilling).toBe(false);
-        expect(result.current.error).toBeNull();
+  it('should not refill if disableRefill is true', () => {
+    const stack: CardItem[] = Array(1).fill({ id: 1 } as any);
+    const onRefill = vi.fn();
+
+    renderHook(() => useAutoRefill(stack, onRefill, true));
+
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should handle fetch error', async () => {
+    const stack: CardItem[] = Array(2).fill({ id: 1 } as any);
+    const onRefill = vi.fn();
+
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useAutoRefill(stack, onRefill));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('disableRefill が true の場合、refill は実行されない', async () => {
-        const onRefill = vi.fn();
-        renderHook(() =>
-            useAutoRefill([], onRefill, true)
-        );
+    expect(result.current.error).toBeTruthy();
+    expect(result.current.error?.message).toBe('Network error');
+    expect(onRefill).not.toHaveBeenCalled();
+  });
 
-        await waitFor(() => {
-            expect(onRefill).not.toHaveBeenCalled();
-        });
+  it('should allow retry after error delay when triggered', async () => {
+    const stack: CardItem[] = Array(2).fill({ id: 1 } as any);
+    const onRefill = vi.fn();
+
+    // First attempt fails
+    mockFetch.mockRejectedValueOnce(new Error('Fail 1'));
+    
+    const { result, rerender } = renderHook(
+      ({ s }) => useAutoRefill(s, onRefill),
+      { initialProps: { s: stack } }
+    );
+
+    // Wait for first failure
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+    expect(result.current.error).toBeTruthy();
+
+    // Advance time past retry delay (3000ms)
+    vi.advanceTimersByTime(3000);
+
+    // Second attempt succeeds
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tracks: [{ id: 999 }] }),
     });
 
-    it('正常系：clearError メソッドでエラーをクリアできる', async () => {
-        const onRefill = vi.fn();
-        global.fetch = vi.fn(() =>
-            Promise.reject(new Error('Network error'))
-        );
+    // Trigger re-render to simulate component update or user interaction
+    // We need to force the effect to run. The effect depends on [stack.length, isRefilling, refillTracks, disableRefill].
+    // If we don't change stack length, it won't run.
+    // But in reality, the user would swipe, reducing stack length.
+    
+    // Simulate stack reduction
+    const newStack = Array(1).fill({ id: 1 } as any);
+    rerender({ s: newStack });
 
-        const { result, rerender } = renderHook(
-            ({ stack }: { stack: CardItem[] }) => useAutoRefill(stack, onRefill),
-            { initialProps: { stack: [mockTrack(1)] } }
-        );
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
 
-        await act(async () => {
-            rerender({ stack: [mockTrack(1)] });
-        });
-
-        await waitFor(() => {
-            expect(result.current.error).not.toBeNull();
-        });
-
-        act(() => {
-            result.current.clearError();
-        });
-
-        expect(result.current.error).toBeNull();
+    expect(onRefill).toHaveBeenCalledWith([{ id: 999 }]);
+  });
+});

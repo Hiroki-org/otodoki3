@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { fetchTracksFromChart, fetchTracksFromChartWithRetry } from '../chart';
 import {
     mockAppleRssResponse,
@@ -10,13 +11,14 @@ import {
  * Apple RSS API と iTunes Search API の両方のモックを設定するヘルパー
  */
 function setupFetchMocks(
-    fetchMock: jest.SpyInstance,
+    fetchMock: MockInstance,
     appleRssResponse: unknown = mockAppleRssResponse,
     itunesSearchResponses: Record<string, { results: { previewUrl: string }[] }> = mockItunesSearchResponses
 ) {
-    fetchMock.mockImplementation((url: string) => {
+    fetchMock.mockImplementation((url: string | URL) => {
+        const urlString = url.toString();
         // Apple RSS API のモック
-        if (url.includes('rss.applemarketingtools.com')) {
+        if (urlString.includes('rss.applemarketingtools.com')) {
             return Promise.resolve({
                 ok: true,
                 status: 200,
@@ -24,8 +26,8 @@ function setupFetchMocks(
             });
         }
         // iTunes Search API のモック
-        if (url.includes('itunes.apple.com/lookup')) {
-            const trackId = new URL(url).searchParams.get('id');
+        if (urlString.includes('itunes.apple.com/lookup')) {
+            const trackId = new URL(urlString).searchParams.get('id');
             if (trackId && itunesSearchResponses[trackId]) {
                 return Promise.resolve({
                     ok: true,
@@ -45,18 +47,18 @@ function setupFetchMocks(
 }
 
 describe('fetchTracksFromChart', () => {
-    let fetchMock: jest.SpyInstance;
+    let fetchMock: MockInstance;
 
     beforeEach(() => {
-        jest.clearAllMocks();
-        jest.useFakeTimers();
-        // Mock fetch using jest.spyOn for better test isolation
-        fetchMock = jest.spyOn(global, 'fetch').mockImplementation();
+        vi.clearAllMocks();
+        vi.useFakeTimers();
+        // Mock fetch using vi.spyOn for better test isolation
+        fetchMock = vi.spyOn(global, 'fetch').mockImplementation(async () => new Response());
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
-        jest.useRealTimers();
+        vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     describe('正常系', () => {
@@ -95,7 +97,7 @@ describe('fetchTracksFromChart', () => {
                 ok: true,
                 status: 200,
                 json: async () => mockAppleRssResponse,
-            });
+            } as Response);
 
             await fetchTracksFromChart(10);
 
@@ -110,7 +112,7 @@ describe('fetchTracksFromChart', () => {
                 ok: true,
                 status: 200,
                 json: async () => mockAppleRssResponse,
-            });
+            } as Response);
 
             await fetchTracksFromChart(10, { userAgent: 'CustomAgent/1.0' });
 
@@ -158,7 +160,7 @@ describe('fetchTracksFromChart', () => {
                 ok: true,
                 status: 200,
                 json: async () => ({ feed: null }),
-            });
+            } as Response);
 
             const tracks = await fetchTracksFromChart(10);
 
@@ -170,7 +172,7 @@ describe('fetchTracksFromChart', () => {
                 ok: true,
                 status: 200,
                 json: async () => ({ feed: {} }),
-            });
+            } as Response);
 
             const tracks = await fetchTracksFromChart(10);
 
@@ -184,7 +186,7 @@ describe('fetchTracksFromChart', () => {
                 ok: false,
                 status: 429,
                 statusText: 'Too Many Requests', json: async () => ({}),
-            });
+            } as Response);
 
             await expect(fetchTracksFromChart(10)).rejects.toThrow(
                 'Apple RSS Charts API rate limit exceeded'
@@ -196,7 +198,7 @@ describe('fetchTracksFromChart', () => {
                 ok: false,
                 status: 500,
                 statusText: 'Internal Server Error', json: async () => ({}),
-            });
+            } as Response);
 
             await expect(fetchTracksFromChart(10)).rejects.toThrow(
                 'Apple RSS Charts API request failed with status 500'
@@ -217,12 +219,12 @@ describe('fetchTracksFromChart', () => {
             let abortSignal: AbortSignal | undefined;
 
             fetchMock.mockImplementationOnce((url, options) => {
-                abortSignal = options.signal;
+                abortSignal = (options as RequestInit).signal as AbortSignal;
                 return Promise.resolve({
                     ok: true,
                     status: 200,
                     json: async () => mockAppleRssResponse,
-                });
+                } as Response);
             });
 
             await fetchTracksFromChart(10, { timeoutMs: 5000 });
@@ -242,26 +244,26 @@ describe('fetchTracksFromChart', () => {
 });
 
 describe('fetchTracksFromChartWithRetry', () => {
-    let fetchMock: jest.SpyInstance;
+    let fetchMock: MockInstance;
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         // Suppress console.error for retry tests
-        jest.spyOn(console, 'error').mockImplementation(() => { });
-        fetchMock = jest.spyOn(global, 'fetch').mockImplementation();
+        vi.spyOn(console, 'error').mockImplementation(() => { });
+        fetchMock = vi.spyOn(global, 'fetch').mockImplementation(async () => new Response());
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('リトライロジック (with fake timers)', () => {
         beforeEach(() => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
         });
 
         afterEach(() => {
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
         it('should succeed on first attempt', async () => {
             setupFetchMocks(fetchMock);
@@ -276,8 +278,9 @@ describe('fetchTracksFromChartWithRetry', () => {
         it('should retry on failure and succeed', async () => {
             // 最初は失敗、2回目は成功
             let callCount = 0;
-            fetchMock.mockImplementation((url: string) => {
-                if (url.includes('rss.applemarketingtools.com')) {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
                     callCount++;
                     if (callCount === 1) {
                         return Promise.reject(new Error('Network error'));
@@ -286,23 +289,23 @@ describe('fetchTracksFromChartWithRetry', () => {
                         ok: true,
                         status: 200,
                         json: async () => mockAppleRssResponse,
-                    });
+                    } as Response);
                 }
                 // iTunes Search API のモック
-                if (url.includes('itunes.apple.com/lookup')) {
-                    const trackId = new URL(url).searchParams.get('id');
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    const trackId = new URL(urlString).searchParams.get('id');
                     if (trackId && mockItunesSearchResponses[trackId]) {
                         return Promise.resolve({
                             ok: true,
                             status: 200,
                             json: async () => mockItunesSearchResponses[trackId],
-                        });
+                        } as Response);
                     }
                     return Promise.resolve({
                         ok: true,
                         status: 200,
                         json: async () => ({ results: [] }),
-                    });
+                    } as Response);
                 }
                 return Promise.reject(new Error('Unexpected URL'));
             });
@@ -310,10 +313,10 @@ describe('fetchTracksFromChartWithRetry', () => {
             const promise = fetchTracksFromChartWithRetry(10, 3, 100);
 
             // 最初の呼び出しが失敗
-            await jest.advanceTimersByTimeAsync(0);
+            await vi.advanceTimersByTimeAsync(0);
 
             // リトライの遅延を待つ（指数バックオフ: 100ms * 2^0 = 100ms + ジッター）
-            await jest.advanceTimersByTimeAsync(200);
+            await vi.advanceTimersByTimeAsync(200);
 
             const tracks = await promise;
 
@@ -322,7 +325,7 @@ describe('fetchTracksFromChartWithRetry', () => {
         });
 
         it('should throw error after max retries', async () => {
-            jest.useRealTimers();
+            vi.useRealTimers();
 
             fetchMock.mockRejectedValue(new Error('Network error'));
 
@@ -334,7 +337,7 @@ describe('fetchTracksFromChartWithRetry', () => {
         });
 
         it('should use default maxRetries of 3', async () => {
-            jest.useRealTimers();
+            vi.useRealTimers();
 
             fetchMock.mockRejectedValue(new Error('Network error'));
 
@@ -348,11 +351,13 @@ describe('fetchTracksFromChartWithRetry', () => {
 
     describe('指数バックオフ', () => {
         it('should increase delay exponentially on each retry', async () => {
+            vi.useFakeTimers();
             let callCount = 0;
 
-            fetchMock.mockImplementation((url: string) => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
                 // Apple RSS API への呼び出しをカウント
-                if (url.includes('rss.applemarketingtools.com')) {
+                if (urlString.includes('rss.applemarketingtools.com')) {
                     callCount++;
                     if (callCount < 3) {
                         return Promise.reject(new Error('Network error'));
@@ -361,40 +366,41 @@ describe('fetchTracksFromChartWithRetry', () => {
                         ok: true,
                         status: 200,
                         json: async () => mockAppleRssResponse,
-                    });
+                    } as Response);
                 }
                 // iTunes Search API のモック
-                if (url.includes('itunes.apple.com/lookup')) {
-                    const trackId = new URL(url).searchParams.get('id');
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    const trackId = new URL(urlString).searchParams.get('id');
                     if (trackId && mockItunesSearchResponses[trackId]) {
                         return Promise.resolve({
                             ok: true,
                             status: 200,
                             json: async () => mockItunesSearchResponses[trackId],
-                        });
+                        } as Response);
                     }
                     return Promise.resolve({
                         ok: true,
                         status: 200,
                         json: async () => ({ results: [] }),
-                    });
+                    } as Response);
                 }
                 return Promise.reject(new Error('Unexpected URL'));
             });
 
             const promise = fetchTracksFromChartWithRetry(10, 3, 1000, 30000, 0);
 
-            await jest.advanceTimersByTimeAsync(100000);
+            await vi.advanceTimersByTimeAsync(100000);
 
             const tracks = await promise;
 
             // 指数的バックオフで3回試行（1回目失敗、2回目失敗、3回目成功）
             expect(callCount).toBe(3);
             expect(tracks).toHaveLength(3);
+            vi.useRealTimers();
         });
 
         it('should respect maxDelay parameter', async () => {
-            jest.useRealTimers();
+            vi.useRealTimers();
 
             fetchMock.mockRejectedValue(new Error('Network error'));
 
@@ -409,7 +415,7 @@ describe('fetchTracksFromChartWithRetry', () => {
 
     describe('ジッター', () => {
         it('should apply jitter to delay', async () => {
-            jest.useRealTimers();
+            vi.useRealTimers();
 
             fetchMock.mockRejectedValue(new Error('Network error'));
 
@@ -423,7 +429,7 @@ describe('fetchTracksFromChartWithRetry', () => {
         });
 
         it('should ensure delay is non-negative even with jitter', async () => {
-            jest.useRealTimers();
+            vi.useRealTimers();
 
             fetchMock.mockRejectedValue(new Error('Network error'));
 
