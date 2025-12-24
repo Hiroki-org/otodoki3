@@ -49,7 +49,7 @@ export function TrackCard({ track, progress }: TrackCardProps) {
           >
             <span className="text-4xl opacity-20">🎵</span>
           </div>
-        )}}
+        )}
 
         {/* Apple Musicボタン (画像の上にオーバーレイ) */}
         {track.track_view_url ? (
