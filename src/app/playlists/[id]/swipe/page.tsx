@@ -3,18 +3,42 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TrackCardStack } from "@/components/TrackCardStack";
 
+type Track = {
+  track_id: number;
+  track_name: string;
+  artist_name: string;
+  artwork_url: string;
+  preview_url: string;
+};
+
 export default function PlaylistSwipePage() {
   const { id } = useParams();
-  const [tracks, setTracks] = useState([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetch(`/api/playlists/${id}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(({ tracks }) => setTracks(tracks))
-      .catch(() => router.push("/login"))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/playlists/${id}`);
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) {
+          console.error("Fetch error:", res.status);
+          setLoading(false);
+          return;
+        }
+        const { tracks } = await res.json();
+        setTracks(tracks.map((t: Track) => ({ ...t, type: "track" as const })));
+      } catch (err) {
+        console.error("Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [id, router]);
 
   if (loading)
@@ -28,6 +52,7 @@ export default function PlaylistSwipePage() {
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
         <p>曲がありません</p>
         <button
+          type="button"
           onClick={() => router.push(`/playlists/${id}`)}
           className="text-green-400"
         >
@@ -42,6 +67,7 @@ export default function PlaylistSwipePage() {
     <div className="min-h-screen bg-black text-white p-4">
       <div className="mb-6 flex items-center gap-4">
         <button
+          type="button"
           onClick={() => router.push(`/playlists/${id}`)}
           className="text-2xl hover:opacity-70"
         >

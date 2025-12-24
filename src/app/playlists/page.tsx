@@ -11,11 +11,27 @@ export default function PlaylistsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/playlists")
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(({ playlists }) => setPlaylists(playlists))
-      .catch(() => router.push("/login"))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/playlists");
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) {
+          console.error("Fetch error:", res.status);
+          setLoading(false);
+          return;
+        }
+        const { playlists } = await res.json();
+        setPlaylists(playlists);
+      } catch (err) {
+        console.error("Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [router]);
 
   if (loading)

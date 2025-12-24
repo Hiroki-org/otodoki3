@@ -73,7 +73,7 @@ const fetchWithRetry = async (
  *
  * @param tracks - 表示するトラックの配列（各要素は Track）。チュートリアルカードとともに初期スタックを構成します。
  * @param mode - 'discover' (デフォルト) または 'playlist'。プレイリストモードでは補充なし・チュートリアルなし。
- * @param sourcePlaylist - プレイリストモードで、元のプレイリストID（'likes' or 'dislikes'）。
+ * @param sourcePlaylist - プレイリストモードで、元のプレイリストID（'likes' or 'dislikes'）。TODO: 将来のプレイリスト間移動機能で使用予定。
  * @returns コンポーネントのレンダリング結果（React 要素）
  */
 export function TrackCardStack({

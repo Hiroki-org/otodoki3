@@ -15,6 +15,9 @@ export async function GET() {
         supabase.from('dislikes').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
+    if (likesCount.error) console.error('Failed to count likes:', likesCount.error);
+    if (dislikesCount.error) console.error('Failed to count dislikes:', dislikesCount.error);
+
     return NextResponse.json({
         playlists: [
             { id: 'likes', name: 'お気に入り', icon: '❤️', count: likesCount.count ?? 0 },

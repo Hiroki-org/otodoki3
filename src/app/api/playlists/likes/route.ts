@@ -1,6 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+type LikeWithTrack = {
+    track_id: number;
+    created_at: string;
+    track_pool: {
+        track_name: string;
+        artist_name: string;
+        artwork_url: string;
+        preview_url: string;
+    } | null;
+};
+
 export async function GET() {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -30,15 +41,17 @@ export async function GET() {
         return NextResponse.json({ error: 'Failed to fetch likes' }, { status: 500 });
     }
 
-    // フラット化してフロントエンドが使いやすい形式に
-    const tracks = data.map((item: any) => ({
-        track_id: item.track_id,
-        track_name: item.track_pool?.track_name,
-        artist_name: item.track_pool?.artist_name,
-        artwork_url: item.track_pool?.artwork_url,
-        preview_url: item.track_pool?.preview_url,
-        created_at: item.created_at,
-    }));
+    // null track_pool を除外してフラット化
+    const tracks = (data as LikeWithTrack[])
+        .filter(item => item.track_pool !== null)
+        .map(item => ({
+            track_id: item.track_id,
+            track_name: item.track_pool!.track_name,
+            artist_name: item.track_pool!.artist_name,
+            artwork_url: item.track_pool!.artwork_url,
+            preview_url: item.track_pool!.preview_url,
+            created_at: item.created_at,
+        }));
 
     return NextResponse.json({ tracks });
 }

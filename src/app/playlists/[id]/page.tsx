@@ -26,11 +26,27 @@ export default function PlaylistDetailPage() {
       : { name: "スキップ済み", icon: "🚫" };
 
   useEffect(() => {
-    fetch(`/api/playlists/${id}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(({ tracks }) => setTracks(tracks))
-      .catch(() => router.push("/login"))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/playlists/${id}`);
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) {
+          console.error("Fetch error:", res.status);
+          setLoading(false);
+          return;
+        }
+        const { tracks } = await res.json();
+        setTracks(tracks);
+      } catch (err) {
+        console.error("Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
 
     // ページ離脱時に音声を停止とリスナーをクリア
     return () => {
@@ -78,6 +94,7 @@ export default function PlaylistDetailPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => router.push("/playlists")}
               className="text-2xl hover:opacity-70"
             >
@@ -101,6 +118,7 @@ export default function PlaylistDetailPage() {
             {tracks.map((track) => (
               <button
                 key={track.track_id}
+                type="button"
                 onClick={() => handlePlay(track)}
                 className="bg-gray-800 rounded-lg p-3 text-left hover:bg-gray-700"
               >
