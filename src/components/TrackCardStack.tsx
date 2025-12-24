@@ -52,7 +52,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     });
   }, []);
 
-  const { isRefilling, error } = useAutoRefill(stack, handleRefill);
+  const { isRefilling, error, clearError } = useAutoRefill(stack, handleRefill);
 
   useEffect(() => {
     setStack((prev) => (prev.length === 0 ? initialStack : prev));
@@ -163,20 +163,31 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
       <div className="absolute inset-x-0 bottom-0 z-200">
         <AudioProgressBar progress={progress} />
       </div>
-      {isRefilling && (
+      {/* エラー表示を優先 */}
+      {error && (
+        <div
+          role="alert"
+          className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white"
+        >
+          補充に失敗しました
+          <button
+            type="button"
+            onClick={() => clearError()}
+            className="ml-2 text-white/80 hover:text-white"
+            aria-label="エラーを閉じる"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* エラーがない時のみローディング表示 */}
+      {!error && isRefilling && (
         <div
           role="status"
           className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white"
         >
           楽曲を補充中...
-        </div>
-      )}
-      {error && (
-        <div
-          role="alert"
-          className="fixed bottom-4 right-4 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white"
-        >
-          補充に失敗しました
         </div>
       )}
       <AnimatePresence initial={false}>
