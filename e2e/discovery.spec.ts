@@ -54,7 +54,7 @@ test.describe('ディスカバリー画面', () => {
         }
 
         // 次のカードが表示されるまで待機
-        await page.waitForTimeout(1000);
+        await expect(cards.first()).toBeVisible({ timeout: 5000 });
 
         // カードが更新されたことを確認（数が減った、または内容が変わった）
         const newCardCount = await cards.count();
@@ -89,7 +89,7 @@ test.describe('ディスカバリー画面', () => {
         }
 
         // 次のカードが表示されるまで待機
-        await page.waitForTimeout(1000);
+        await expect(cards.first()).toBeVisible({ timeout: 5000 });
 
         // カードが更新されたことを確認
         const newCardCount = await cards.count();
@@ -109,11 +109,8 @@ test.describe('ディスカバリー画面', () => {
             await likeButton.click();
 
             // クリック後の動作を確認（次のカードが表示される、アニメーションが発生するなど）
-            await page.waitForTimeout(1000);
-
-            // ページがクラッシュしていないことを確認
             const mainContent = page.locator('main');
-            await expect(mainContent).toBeVisible();
+            await expect(mainContent).toBeVisible({ timeout: 5000 });
         } else {
             // ボタンが見つからない場合はテストをスキップ
             test.skip();
@@ -133,11 +130,8 @@ test.describe('ディスカバリー画面', () => {
             await dislikeButton.click();
 
             // クリック後の動作を確認
-            await page.waitForTimeout(1000);
-
-            // ページがクラッシュしていないことを確認
             const mainContent = page.locator('main');
-            await expect(mainContent).toBeVisible();
+            await expect(mainContent).toBeVisible({ timeout: 5000 });
         } else {
             // ボタンが見つからない場合はテストをスキップ
             test.skip();

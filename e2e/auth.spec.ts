@@ -46,8 +46,7 @@ test.describe('認証フロー', () => {
         await loginButton.click();
 
         // エラーメッセージが表示されるか、ログインページに留まることを確認
-        await page.waitForTimeout(2000); // エラー表示を待機
-        await expect(page).toHaveURL(/\/login/);
+        await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
     });
 
     test('認証済みユーザーはログインページにアクセスしてもホームにリダイレクトされる', async ({ page }) => {

@@ -4,39 +4,113 @@ import { vi } from 'vitest';
  * Supabase クライアントのモックを作成するヘルパー
  */
 export function createMockSupabaseClient() {
-    // 各クエリで使い回すモック関数を作成
+    const mockSelect = vi.fn();
+    const mockInsert = vi.fn();
+    const mockUpdate = vi.fn();
+    const mockDelete = vi.fn();
+    const mockUpsert = vi.fn();
+    const mockOrder = vi.fn();
+    const mockLimit = vi.fn();
+    const mockSingle = vi.fn();
+    const mockEq = vi.fn();
+    const mockGt = vi.fn();
+    const mockLt = vi.fn();
+    const mockGte = vi.fn();
+    const mockLte = vi.fn();
+    const mockIn = vi.fn();
+    const mockNot = vi.fn();
+    const mockNeq = vi.fn();
+    const mockIs = vi.fn();
+    const mockOr = vi.fn();
+    const mockAnd = vi.fn();
+
+    // クエリビルダー（await 可能なモック）を生成
     const createQueryBuilder = (): any => {
-        const builder: any = {};
-        const methods = [
-            'select', 'insert', 'update', 'delete', 'upsert',
-            'eq', 'order', 'limit', 'gt', 'lt', 'gte', 'lte',
-            'in', 'single', 'not', 'neq', 'is', 'or', 'and'
-        ];
+        const builder: any = {
+            _pending: undefined as Promise<any> | any,
+            _resolveWith: undefined as ((...args: any[]) => any) | undefined,
+        };
 
-        methods.forEach(method => {
-            builder[method] = vi.fn((...args) => builder);
+        // DB から結果を返す系（await 時にこの結果を返す）
+        const resultMethods: Record<string, (...args: any[]) => any> = {
+            select: mockSelect,
+            insert: mockInsert,
+            update: mockUpdate,
+            delete: mockDelete,
+            upsert: mockUpsert,
+            order: mockOrder,
+            limit: mockLimit,
+            single: mockSingle,
+        };
+
+        // フィルタリングだけ行う系（結果は変えずにチェーン継続）
+        const chainOnlyMethods: Record<string, (...args: any[]) => any> = {
+            eq: mockEq,
+            gt: mockGt,
+            lt: mockLt,
+            gte: mockGte,
+            lte: mockLte,
+            in: mockIn,
+            not: mockNot,
+            neq: mockNeq,
+            is: mockIs,
+            or: mockOr,
+            and: mockAnd,
+        };
+
+        Object.entries(resultMethods).forEach(([name, mock]) => {
+            builder[name] = (...args: any[]) => {
+                builder._resolveWith = mock;
+                builder._pending = mock(...args);
+                return builder;
+            };
         });
 
-        // Promise-like behavior: make it awaitable
-        builder.then = vi.fn((resolve, reject) => {
-            // デフォルトでは空の結果を返す
-            return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+        Object.entries(chainOnlyMethods).forEach(([name, mock]) => {
+            builder[name] = (...args: any[]) => {
+                mock(...args);
+                return builder;
+            };
         });
-        builder.catch = vi.fn((reject) => {
-            return Promise.resolve({ data: null, error: null }).catch(reject);
-        });
+
+        builder.then = (onFulfilled?: any, onRejected?: any) => {
+            const pending = builder._pending ?? Promise.resolve({ data: null, error: null });
+            return Promise.resolve(pending).then(onFulfilled, onRejected);
+        };
+
+        builder.catch = (onRejected?: any) => builder.then(undefined, onRejected);
 
         return builder;
     };
 
     // from() を呼ぶたびに新しいクエリビルダーを返す
-    const fromMock = vi.fn((table: string) => createQueryBuilder());
+    const fromMock = vi.fn(() => createQueryBuilder());
 
     return {
         auth: {
             getUser: vi.fn(),
         },
         from: fromMock,
+        // テストで結果を差し込むために公開
+        mockSelect,
+        mockInsert,
+        mockUpdate,
+        mockDelete,
+        mockUpsert,
+        mockOrder,
+        mockLimit,
+        mockSingle,
+        mockEq,
+        mockGt,
+        mockLt,
+        mockGte,
+        mockLte,
+        mockIn,
+        mockNot,
+        mockNeq,
+        mockIs,
+        mockOr,
+        mockAnd,
     };
 }
 
