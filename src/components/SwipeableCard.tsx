@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   motion,
   useMotionValue,
@@ -44,7 +45,7 @@ interface SwipeableCardProps {
   onSwipe: (direction: "left" | "right", item: CardItem) => void;
   index: number;
   isPlaying?: boolean;
-  onPlayPause?: () => void;
+  onPlayPause?: (e?: React.MouseEvent) => void;
 }
 
 export function SwipeableCard({
@@ -235,7 +236,7 @@ export function SwipeableCard({
       {isTop && onPlayPause && (
         <button
           type="button"
-          onClick={onPlayPause}
+          onClick={(e) => onPlayPause(e)}
           className="absolute inset-y-0 left-1/2 -translate-x-1/2 flex items-center justify-center z-10"
           aria-label={isPlaying ? "一時停止" : "再生"}
         >
