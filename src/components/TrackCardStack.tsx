@@ -7,8 +7,61 @@ import type { Track, CardItem } from "../types/track-pool";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useAutoRefill } from "../hooks/useAutoRefill";
 import { SwipeableCard, SwipeableCardRef } from "./SwipeableCard";
+import { useToast } from "./ToastProvider";
 
 type SwipeDirection = "left" | "right";
+
+const fetchWithTimeout = async (
+  input: RequestInfo,
+  init: RequestInit = {},
+  timeoutMs = 5000
+) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    clearTimeout(timeout);
+    return res;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
+};
+
+const fetchWithRetry = async (
+  input: RequestInfo,
+  init: RequestInit = {},
+  attempts = 3,
+  timeoutMs = 5000,
+  baseDelay = 300
+) => {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetchWithTimeout(input, init, timeoutMs);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "<no body>");
+        const err = new Error(`HTTP ${res.status}: ${text}`);
+        lastErr = err;
+        if (res.status >= 500 && i < attempts - 1) {
+          await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, i)));
+          continue;
+        }
+        throw err;
+      }
+      return res;
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) {
+        const delay = baseDelay * Math.pow(2, i);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw lastErr;
+    }
+  }
+  // throw lastErr; // 到達不能コードを削除
+};
 
 /**
  * トラックカードのスタックを管理して表示するコンポーネント。
@@ -65,6 +118,10 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
 
   const { isRefilling, error, clearError } = useAutoRefill(stack, handleRefill);
 
+  // Toast helper
+  const toast = useToast();
+  const [actionInProgress, setActionInProgress] = useState(false);
+
   useEffect(() => {
     setStack((prev) => (prev.length === 0 ? initialStack : prev));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,12 +164,8 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
 
     // 楽曲カード処理
     const track = item as Track;
-    if (direction === "right") {
-      console.log("Like", track.track_id);
-    } else {
-      console.log("Skip", track.track_id);
-    }
 
+    // optimistic remove
     setStack((prev) => {
       if (prev.length === 0) return prev;
       const top = prev[0];
@@ -132,6 +185,83 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
           )
       );
     });
+
+    if (direction === "right") {
+      // Like flow: optimistic removal, background retry with rollback on final failure
+      console.log("Like", track.track_id);
+      const id = String(track.track_id);
+      (async () => {
+        setActionInProgress(true);
+        try {
+          const pending = toast.push(
+            { type: "info", message: "いいねを保存しています..." },
+            10000
+          );
+          await fetchWithRetry(
+            "/api/tracks/like",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ track_id: id }),
+            },
+            3,
+            5000,
+            300
+          );
+          toast.dismiss(pending);
+          toast.push({ type: "success", message: "いいねを保存しました" });
+        } catch (err) {
+          console.error("Failed to save like after retries", {
+            track_id: id,
+            error: err,
+          });
+          toast.push({ type: "error", message: "いいねの保存に失敗しました" });
+          // rollback: reinsert item at top
+          setStack((prev) => [track, ...prev]);
+        } finally {
+          setActionInProgress(false);
+        }
+      })();
+    } else {
+      // Dislike/Skip flow: await, show progress and retry up to 3 attempts total (initial + 2 retries)
+      console.log("Skip", track.track_id);
+      const id = String(track.track_id);
+      (async () => {
+        setActionInProgress(true);
+        try {
+          const pending = toast.push(
+            { type: "info", message: "スキップを保存しています..." },
+            10000
+          );
+          await fetchWithRetry(
+            "/api/tracks/dislike",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ track_id: id }),
+            },
+            3,
+            5000,
+            300
+          );
+          toast.dismiss(pending);
+          toast.push({ type: "success", message: "スキップを保存しました" });
+        } catch (err) {
+          console.error("Failed to save dislike after retries", {
+            track_id: id,
+            error: err,
+          });
+          toast.push({
+            type: "error",
+            message: "スキップの保存に失敗しました",
+          });
+          // rollback on final failure
+          setStack((prev) => [track, ...prev]);
+        } finally {
+          setActionInProgress(false);
+        }
+      })();
+    }
   };
 
   const handlePlayPauseClick = (e?: React.MouseEvent) => {
@@ -251,7 +381,12 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
         <button
           type="button"
           onClick={handleDislikeClick}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+          disabled={actionInProgress}
+          className={`flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform active:scale-95 ${
+            actionInProgress
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:scale-110"
+          }`}
           aria-label="よくない"
         >
           <svg
@@ -271,7 +406,12 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
         <button
           type="button"
           onClick={handleLikeClick}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+          disabled={actionInProgress}
+          className={`flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-transform active:scale-95 ${
+            actionInProgress
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:scale-110"
+          }`}
           aria-label="いいね"
         >
           <svg
