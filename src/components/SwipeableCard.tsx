@@ -58,6 +58,7 @@ interface SwipeableCardProps {
   isPlaying?: boolean;
   onPlayPause?: (e?: React.MouseEvent) => void;
   progress?: number;
+  tutorialMode?: "discover" | "playlist";
 }
 
 export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
@@ -70,6 +71,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
       isPlaying,
       onPlayPause,
       progress,
+      tutorialMode,
     }: SwipeableCardProps,
     ref
   ) {
@@ -306,7 +308,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
         </AnimatePresence>
 
         {item.type === "tutorial" ? (
-          <TutorialCard />
+          <TutorialCard mode={tutorialMode} />
         ) : (
           <TrackCard track={item} progress={progress} />
         )}

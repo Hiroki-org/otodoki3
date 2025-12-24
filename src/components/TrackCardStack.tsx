@@ -72,9 +72,19 @@ const fetchWithRetry = async (
  * 自動再生はユーザーが初回インタラクションを行った後にのみ開始されます。
  *
  * @param tracks - 表示するトラックの配列（各要素は Track）。チュートリアルカードとともに初期スタックを構成します。
+ * @param mode - 'discover' (デフォルト) または 'playlist'。プレイリストモードでは補充なし・チュートリアルなし。
+ * @param sourcePlaylist - プレイリストモードで、元のプレイリストID（'likes' or 'dislikes'）。
  * @returns コンポーネントのレンダリング結果（React 要素）
  */
-export function TrackCardStack({ tracks }: { tracks: Track[] }) {
+export function TrackCardStack({
+  tracks,
+  mode = "discover",
+  sourcePlaylist,
+}: {
+  tracks: Track[];
+  mode?: "discover" | "playlist";
+  sourcePlaylist?: string;
+}) {
   // ライブラリ選定理由:
   // - react-tinder-card は peerDependencies が react@^16.8 || ^17 || ^18 までで、react@19 と依存解決が衝突する可能性が高い
   // - framer-motion は react@^18 || ^19 をサポートしており、このリポジトリ(react 19)で安全に導入できる
@@ -116,7 +126,11 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     });
   }, []);
 
-  const { isRefilling, error, clearError } = useAutoRefill(stack, handleRefill);
+  const { isRefilling, error, clearError } = useAutoRefill(
+    stack,
+    handleRefill,
+    mode === "playlist" // プレイリストモードでは補充無効化
+  );
 
   // Toast helper
   const toast = useToast();
@@ -144,9 +158,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     if (!hasUserInteractedRef.current) return;
 
     play(top.preview_url);
-    // 指示: 依存配列は track_id のみ（ジェスチャー起点を維持したい）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stack[0]?.type === "track" ? stack[0].track_id : stack[0]?.id]);
+  }, [stack[0], play]);
 
   const swipeTop = (direction: SwipeDirection, item: CardItem) => {
     // ユーザージェスチャー内で同期的に停止（自動再生ポリシー対策）
@@ -239,7 +251,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
             300
           );
           toast.dismiss(pending);
-          toast.push({ type: "success", message: "スキップを保存しました" });
+          // toast.push({ type: "success", message: "スキップを保存しました" }); // 通知を削除
         } catch (err) {
           console.error("Failed to save dislike after retries", {
             track_id: id,
@@ -296,12 +308,15 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
   };
 
   if (stack.length === 0) {
+    const emptyMessage =
+      mode === "playlist"
+        ? "すべての曲を評価しました ✨"
+        : "今日のディスカバリーはここまで 🎵";
+
     return (
       <div className="flex flex-col items-center gap-8">
         <div className="flex h-[min(85vw,340px)] w-[min(85vw,340px)] items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
-          <p className="text-sm opacity-80">
-            今日のディスカバリーはここまで 🎵
-          </p>
+          <p className="text-sm opacity-80">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -363,6 +378,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
                     isTop && isTrack ? handlePlayPauseClick : undefined
                   }
                   progress={isTop && isTrack ? progress : undefined}
+                  tutorialMode={mode}
                 />
               );
             })}

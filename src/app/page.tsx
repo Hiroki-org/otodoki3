@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 import { TrackCardStack } from "@/components/TrackCardStack";
@@ -85,14 +86,22 @@ export default function Home() {
                 右スワイプ: Like / 左スワイプ: Skip
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className="rounded-full border border-red-200 px-3 py-1 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-            >
-              {isSigningOut ? "サインアウト中…" : "ログアウト"}
-            </button>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/playlists"
+                className="rounded-full border border-green-200 px-3 py-1 text-sm font-semibold text-green-600 transition hover:bg-green-50"
+              >
+                📚 プレイリスト
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="rounded-full border border-red-200 px-3 py-1 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                {isSigningOut ? "サインアウト中…" : "ログアウト"}
+              </button>
+            </div>
           </div>
         </header>
 
