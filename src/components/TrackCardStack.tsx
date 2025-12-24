@@ -7,7 +7,6 @@ import type { Track, CardItem } from "../types/track-pool";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useAutoRefill } from "../hooks/useAutoRefill";
 import { SwipeableCard, SwipeableCardRef } from "./SwipeableCard";
-import { AudioProgressBar } from "./AudioProgressBar";
 
 type SwipeDirection = "left" | "right";
 
@@ -174,73 +173,81 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
 
   if (stack.length === 0) {
     return (
-      <div className="flex h-[70vh] max-h-140 w-[92vw] max-w-sm items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
-        <p className="text-sm opacity-80">今日のディスカバリーはここまで 🎵</p>
+      <div className="flex flex-col items-center gap-8">
+        <div className="flex h-[min(85vw,340px)] w-[min(85vw,340px)] items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
+          <p className="text-sm opacity-80">
+            今日のディスカバリーはここまで 🎵
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative h-[70vh] max-h-140 w-[92vw] max-w-sm">
-      <div className="absolute inset-x-0 bottom-0 z-200">
-        <AudioProgressBar progress={progress} />
-      </div>
-      {/* エラー表示を優先 */}
-      {error && (
-        <div
-          role="alert"
-          className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white"
-        >
-          補充に失敗しました
-          <button
-            type="button"
-            onClick={() => clearError()}
-            className="ml-2 text-white/80 hover:text-white"
-            aria-label="エラーを閉じる"
+    <div className="relative flex flex-col items-center gap-8">
+      {/* カードスタック部分 */}
+      <div className="relative h-[min(110vw,440px)] w-[min(85vw,340px)]">
+        {/* エラー表示を優先 */}
+        {error && (
+          <div
+            role="alert"
+            className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white"
           >
-            ✕
-          </button>
+            補充に失敗しました
+            <button
+              type="button"
+              onClick={() => clearError()}
+              className="ml-2 text-white/80 hover:text-white"
+              aria-label="エラーを閉じる"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* エラーがない時のみローディング表示 */}
+        {!error && isRefilling && (
+          <div
+            role="status"
+            className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white"
+          >
+            楽曲を補充中...
+          </div>
+        )}
+
+        {/* カードスタック */}
+        <div className="relative h-full">
+          <AnimatePresence initial={false}>
+            {stack.map((item, index) => {
+              const isTop = index === 0;
+              const isTrack = item.type === "track";
+
+              return (
+                <SwipeableCard
+                  key={
+                    "type" in item && item.type === "tutorial"
+                      ? item.id
+                      : item.track_id
+                  }
+                  ref={isTop ? topCardRef : null}
+                  item={item}
+                  isTop={isTop}
+                  index={index}
+                  onSwipe={swipeTop}
+                  isPlaying={isTop && isTrack ? isPlaying : undefined}
+                  onPlayPause={
+                    isTop && isTrack ? handlePlayPauseClick : undefined
+                  }
+                  progress={isTop && isTrack ? progress : undefined}
+                />
+              );
+            })}
+          </AnimatePresence>
         </div>
-      )}
-
-      {/* エラーがない時のみローディング表示 */}
-      {!error && isRefilling && (
-        <div
-          role="status"
-          className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white"
-        >
-          楽曲を補充中...
-        </div>
-      )}
-
-      {/* カードスタック */}
-      <div className="relative h-full">
-        <AnimatePresence initial={false}>
-          {stack.map((item, index) => {
-            const isTop = index === 0;
-
-            return (
-              <SwipeableCard
-                key={
-                  "type" in item && item.type === "tutorial"
-                    ? item.id
-                    : item.track_id
-                }
-                ref={isTop ? topCardRef : null}
-                item={item}
-                isTop={isTop}
-                index={index}
-                onSwipe={swipeTop}
-                isPlaying={isTop ? isPlaying : undefined}
-                onPlayPause={isTop ? handlePlayPauseClick : undefined}
-              />
-            );
-          })}
-        </AnimatePresence>
       </div>
 
-      {/* Like/Dislikeボタン */}
-      <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-8 z-[300]">
+      {/* Like/Dislikeボタン - カードの外側（下）に配置 */}
+      <div className="flex items-center justify-center gap-8">
         <button
           type="button"
           onClick={handleDislikeClick}
