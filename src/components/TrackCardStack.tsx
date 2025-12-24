@@ -118,7 +118,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
                   ? item.id
                   : item.track_id
               }
-              track={item}
+              item={item}
               isTop={isTop}
               index={index}
               onSwipe={swipeTop}

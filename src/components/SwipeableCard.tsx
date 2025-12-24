@@ -60,12 +60,12 @@ export function SwipeableCard({
       flushSync(() => {
         setExitX(-EXIT_X_OFFSET_PX);
       });
-      onSwipe("left", track);
+      onSwipe("left", item);
     } else if (e.key === "ArrowRight") {
       flushSync(() => {
         setExitX(EXIT_X_OFFSET_PX);
       });
-      onSwipe("right", track);
+      onSwipe("right", item);
     }
   };
 
@@ -103,12 +103,12 @@ export function SwipeableCard({
       flushSync(() => {
         setExitX(EXIT_X_OFFSET_PX);
       });
-      onSwipe("right", track);
+      onSwipe("right", item);
     } else if (swipedLeft) {
       flushSync(() => {
         setExitX(-EXIT_X_OFFSET_PX);
       });
-      onSwipe("left", track);
+      onSwipe("left", item);
     } else {
       animate(x, 0, SNAP_BACK_SPRING);
     }
