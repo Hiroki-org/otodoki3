@@ -148,11 +148,7 @@ export function SwipeableCard({
       }
       tabIndex={isTop ? 0 : -1}
     >
-      {item.type === "tutorial" ? (
-        <TutorialCard />
-      ) : (
-        <TrackCard track={item} />
-      )}
+      {item.type === "tutorial" ? <TutorialCard /> : <TrackCard track={item} />}
     </motion.button>
   );
 }

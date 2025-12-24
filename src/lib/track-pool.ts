@@ -52,6 +52,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
 
         // Database型からTrack型に変換
         return data.map((row) => ({
+            type: 'track',
             track_id: row.track_id,
             track_name: row.track_name,
             artist_name: row.artist_name,
