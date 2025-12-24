@@ -389,7 +389,7 @@ describe('fetchTracksFromChartWithRetry', () => {
 
             const promise = fetchTracksFromChartWithRetry(10, 3, 1000, 30000, 0);
 
-            await vi.advanceTimersByTimeAsync(100000);
+            await vi.advanceTimersByTimeAsync(10000);
 
             const tracks = await promise;
 

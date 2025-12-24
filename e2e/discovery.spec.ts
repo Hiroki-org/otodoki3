@@ -32,12 +32,13 @@ test.describe('ディスカバリー画面', () => {
 
         // 最初のカードの情報を取得
         const cards = page.locator('[data-testid="track-card"]').or(page.locator('article, [role="article"]'));
-        const initialCardCount = await cards.count();
+        const firstCard = cards.first();
+        const firstCardText = await firstCard.textContent();
 
         // Likeボタンを探してクリック、またはスワイプジェスチャーを実行
         const likeButton = page.locator('button[aria-label*="Like"], button[aria-label*="お気に入り"], button:has-text("♥")').first();
 
-        if (await likeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        if (await likeButton.isVisible({ timeout: 1000 })) {
             await likeButton.click();
         } else {
             // ボタンが見つからない場合はスワイプジェスチャーを実行
@@ -56,9 +57,9 @@ test.describe('ディスカバリー画面', () => {
         // 次のカードが表示されるまで待機
         await expect(cards.first()).toBeVisible({ timeout: 5000 });
 
-        // カードが更新されたことを確認（数が減った、または内容が変わった）
-        const newCardCount = await cards.count();
-        expect(newCardCount).toBeGreaterThanOrEqual(0);
+        // カードが更新されたことを確認（内容が変わった）
+        const newFirstCardText = await cards.first().textContent();
+        expect(newFirstCardText).not.toBe(firstCardText);
     });
 
     test('左スワイプ（Dislike）で次のカードが表示される', async ({ page }) => {
@@ -67,12 +68,13 @@ test.describe('ディスカバリー画面', () => {
 
         // 最初のカードの情報を取得
         const cards = page.locator('[data-testid="track-card"]').or(page.locator('article, [role="article"]'));
-        const initialCardCount = await cards.count();
+        const firstCard = cards.first();
+        const firstCardText = await firstCard.textContent();
 
         // Dislikeボタンを探してクリック、またはスワイプジェスチャーを実行
         const dislikeButton = page.locator('button[aria-label*="Dislike"], button[aria-label*="興味なし"], button:has-text("✕")').first();
 
-        if (await dislikeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        if (await dislikeButton.isVisible({ timeout: 1000 })) {
             await dislikeButton.click();
         } else {
             // ボタンが見つからない場合はスワイプジェスチャーを実行
@@ -92,8 +94,8 @@ test.describe('ディスカバリー画面', () => {
         await expect(cards.first()).toBeVisible({ timeout: 5000 });
 
         // カードが更新されたことを確認
-        const newCardCount = await cards.count();
-        expect(newCardCount).toBeGreaterThanOrEqual(0);
+        const newFirstCardText = await cards.first().textContent();
+        expect(newFirstCardText).not.toBe(firstCardText);
     });
 
     test('Likeボタンクリックで動作する', async ({ page }) => {
@@ -104,7 +106,7 @@ test.describe('ディスカバリー画面', () => {
         const likeButton = page.locator('button[aria-label*="Like"], button[aria-label*="お気に入り"]').first();
 
         // ボタンが表示されている場合
-        if (await likeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await likeButton.isVisible({ timeout: 2000 })) {
             // ボタンをクリック
             await likeButton.click();
 
@@ -125,7 +127,7 @@ test.describe('ディスカバリー画面', () => {
         const dislikeButton = page.locator('button[aria-label*="Dislike"], button[aria-label*="興味なし"]').first();
 
         // ボタンが表示されている場合
-        if (await dislikeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await dislikeButton.isVisible({ timeout: 2000 })) {
             // ボタンをクリック
             await dislikeButton.click();
 
@@ -146,7 +148,7 @@ test.describe('ディスカバリー画面', () => {
         const cards = page.locator('[data-testid="track-card"]').or(page.locator('article, [role="article"]'));
         const firstCard = cards.first();
 
-        if (await firstCard.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await firstCard.isVisible({ timeout: 2000 })) {
             // トラック名またはアーティスト名が表示されているか確認
             const hasText = await firstCard.textContent();
             expect(hasText).toBeTruthy();

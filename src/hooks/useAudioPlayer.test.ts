@@ -7,10 +7,6 @@ describe('useAudioPlayer', () => {
         vi.clearAllMocks();
     });
 
-    afterEach(() => {
-        vi.clearAllMocks();
-    });
-
     it('初期状態が正しい', () => {
         const { result } = renderHook(() => useAudioPlayer());
         expect(result.current.isPlaying).toBe(false);

@@ -67,10 +67,10 @@ describe('rateLimit', () => {
         // Advance time by half windowMs
         vi.advanceTimersByTime(windowMs / 2);
 
-        // Should have refilled about half tokens
+        // Should have refilled about half tokens (5 tokens)
         const result = rateLimit(key, limit, windowMs);
         expect(result.allowed).toBe(true);
-        // We consumed 1, so remaining should be around 4 (5 refilled - 1 consumed)
-        expect(result.remaining).toBeGreaterThanOrEqual(3);
+        // We consumed 1, so remaining should be 4 (5 refilled - 1 consumed)
+        expect(result.remaining).toBe(4);
     });
 });

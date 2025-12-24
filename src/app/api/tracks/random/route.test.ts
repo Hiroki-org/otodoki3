@@ -162,7 +162,11 @@ describe('GET /api/tracks/random', () => {
             expect(response.status).toBe(200);
             expect(data.tracks).toBeDefined();
             // Verify that the .not() method was called to exclude tracks
-            expect(mockSupabase.from).toHaveBeenCalledWith('track_pool');
+            expect(mockSupabase.mockNot).toHaveBeenCalledWith(
+                'track_id',
+                'in',
+                expect.stringContaining('(')
+            );
         });
     });
 

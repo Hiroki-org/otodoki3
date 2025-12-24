@@ -1,9 +1,36 @@
 import { vi } from 'vitest';
+import { SupabaseClient } from '@supabase/supabase-js';
+
+export type MockSupabaseClient = Partial<SupabaseClient<any, "public", any>> & {
+    mockSelect: ReturnType<typeof vi.fn>;
+    mockInsert: ReturnType<typeof vi.fn>;
+    mockUpdate: ReturnType<typeof vi.fn>;
+    mockDelete: ReturnType<typeof vi.fn>;
+    mockUpsert: ReturnType<typeof vi.fn>;
+    mockOrder: ReturnType<typeof vi.fn>;
+    mockLimit: ReturnType<typeof vi.fn>;
+    mockSingle: ReturnType<typeof vi.fn>;
+    mockEq: ReturnType<typeof vi.fn>;
+    mockGt: ReturnType<typeof vi.fn>;
+    mockLt: ReturnType<typeof vi.fn>;
+    mockGte: ReturnType<typeof vi.fn>;
+    mockLte: ReturnType<typeof vi.fn>;
+    mockIn: ReturnType<typeof vi.fn>;
+    mockNot: ReturnType<typeof vi.fn>;
+    mockNeq: ReturnType<typeof vi.fn>;
+    mockIs: ReturnType<typeof vi.fn>;
+    mockOr: ReturnType<typeof vi.fn>;
+    mockAnd: ReturnType<typeof vi.fn>;
+    auth: {
+        getUser: ReturnType<typeof vi.fn>;
+    };
+    from: ReturnType<typeof vi.fn>;
+};
 
 /**
  * Supabase クライアントのモックを作成するヘルパー
  */
-export function createMockSupabaseClient() {
+export function createMockSupabaseClient(): MockSupabaseClient {
     const mockSelect = vi.fn();
     const mockInsert = vi.fn();
     const mockUpdate = vi.fn();
@@ -73,10 +100,13 @@ export function createMockSupabaseClient() {
             };
         });
 
-        builder.then = (onFulfilled?: any, onRejected?: any) => {
-            const pending = builder._pending ?? Promise.resolve({ data: null, error: null });
-            return Promise.resolve(pending).then(onFulfilled, onRejected);
-        };
+        Object.defineProperty(builder, 'then', {
+            value: (onFulfilled?: any, onRejected?: any) => {
+                const pending = builder._pending ?? Promise.resolve({ data: null, error: null });
+                return Promise.resolve(pending).then(onFulfilled, onRejected);
+            },
+            writable: true,
+        });
 
         builder.catch = (onRejected?: any) => builder.then(undefined, onRejected);
 

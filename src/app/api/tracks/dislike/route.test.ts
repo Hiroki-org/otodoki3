@@ -50,7 +50,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: '12345' }),
+                body: JSON.stringify({ track_id: '12345' }),
             });
 
             const response = await POST(request);
@@ -80,7 +80,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: 67890 }),
+                body: JSON.stringify({ track_id: 67890 }),
             });
 
             const response = await POST(request);
@@ -107,7 +107,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: 99999 }), // Number instead of string
+                body: JSON.stringify({ track_id: 99999 }), // Number instead of string
             });
 
             const response = await POST(request);
@@ -128,7 +128,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: '12345' }),
+                body: JSON.stringify({ track_id: '12345' }),
             });
 
             const response = await POST(request);
@@ -154,7 +154,7 @@ describe('POST /api/tracks/dislike', () => {
             const data = await response.json();
 
             expect(response.status).toBe(400);
-            expect(data.error).toContain('trackId');
+            expect(data.error).toContain('track_id');
         });
 
         it('無効なtrackIdの場合は400を返す', async () => {
@@ -166,7 +166,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: 'invalid' }), // Invalid track ID
+                body: JSON.stringify({ track_id: 'invalid' }), // Invalid track ID
             });
 
             const response = await POST(request);
@@ -188,7 +188,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: '12345' }),
+                body: JSON.stringify({ track_id: '12345' }),
             });
 
             const response = await POST(request);
@@ -213,7 +213,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: '12345' }),
+                body: JSON.stringify({ track_id: '12345' }),
             });
 
             const response = await POST(request);
@@ -240,7 +240,7 @@ describe('POST /api/tracks/dislike', () => {
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: '12345' }),
+                body: JSON.stringify({ track_id: '12345' }),
             });
 
             const response = await POST(request);
@@ -271,26 +271,23 @@ describe('POST /api/tracks/dislike', () => {
             expect(data.error).toBeDefined();
         });
 
-        it('trackIdが0の場合は正常に処理される', async () => {
+        it('trackIdが0の場合は400を返す', async () => {
             mockSupabase.auth.getUser.mockResolvedValue({
                 data: { user: mockAuthenticatedUser },
                 error: null,
             });
 
-            mockSupabase.mockDelete.mockResolvedValue({ data: null, error: null });
-            mockSupabase.mockUpsert.mockResolvedValue({ data: null, error: null });
-
             const request = new Request('http://localhost:3000/api/tracks/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: 0 }),
+                body: JSON.stringify({ track_id: 0 }),
             });
 
             const response = await POST(request);
             const data = await response.json();
 
-            expect(response.status).toBe(200);
-            expect(data.success).toBe(true);
+            expect(response.status).toBe(400);
+            expect(data.error).toBeDefined();
         });
     });
 });
