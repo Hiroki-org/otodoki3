@@ -3,18 +3,42 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const publicPaths = ['/login', '/waitlist', '/auth/callback']
 
+const ALLOWED_EMAIL_LIST =
+    process.env.ALLOWED_EMAILS?.split(',').map((value) => value.trim().toLowerCase()) ?? [];
+
 function isAllowedEmail(email: string): boolean {
-    const allowedEmails =
-        process.env.ALLOWED_EMAILS?.split(',').map((value) => value.trim().toLowerCase()) ?? []
-    return allowedEmails.includes(email.toLowerCase())
+    return ALLOWED_EMAIL_LIST.includes(email.toLowerCase());
+}
+
+function createRedirectWithCookies(
+    request: NextRequest,
+    supabaseResponse: NextResponse,
+    pathname: string
+): NextResponse {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname;
+    const redirectResponse = NextResponse.redirect(url);
+    // Copy cookies from supabaseResponse to preserve session
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
 }
 
 export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({ request })
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing required env vars: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in middleware');
+        return new NextResponse('Internal Server Error: Application is not configured correctly.', { status: 500 });
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {
@@ -52,29 +76,11 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!user) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        const redirectResponse = NextResponse.redirect(url)
-        // Copy cookies from supabaseResponse to preserve session
-        supabaseResponse.headers.forEach((value, key) => {
-            if (key.toLowerCase() === 'set-cookie') {
-                redirectResponse.headers.append(key, value)
-            }
-        })
-        return redirectResponse
+        return createRedirectWithCookies(request, supabaseResponse, '/login');
     }
 
     if (user.email && !isAllowedEmail(user.email)) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/waitlist'
-        const redirectResponse = NextResponse.redirect(url)
-        // Copy cookies from supabaseResponse to preserve session
-        supabaseResponse.headers.forEach((value, key) => {
-            if (key.toLowerCase() === 'set-cookie') {
-                redirectResponse.headers.append(key, value)
-            }
-        })
-        return redirectResponse
+        return createRedirectWithCookies(request, supabaseResponse, '/waitlist');
     }
 
     return supabaseResponse

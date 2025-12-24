@@ -9,13 +9,27 @@ export async function GET(request: Request) {
 
     // Validate and normalize the 'next' parameter to prevent open-redirect
     let normalizedNext = '/'
-    if (next.startsWith('/') && !next.startsWith('//') && !next.includes('http') && !next.includes('://')) {
-        // Resolve dot-segments (e.g., /../ or /./)
-        try {
-            const url = new URL(next, 'http://dummy.com')
-            normalizedNext = url.pathname
-        } catch {
-            normalizedNext = '/'
+    if (next.startsWith('/') && !next.startsWith('//')) {
+        // Reject any URL scheme patterns (javascript:, data:, etc.)
+        const dangerousPatterns = ['javascript:', 'data:', 'vbscript:', 'file:', ':', '\\'];
+        const lowerNext = next.toLowerCase();
+        const hasDangerousScheme = dangerousPatterns.some(pattern =>
+            lowerNext.includes(pattern)
+        );
+
+        if (hasDangerousScheme) {
+            normalizedNext = '/';
+        } else {
+            // Resolve dot-segments (e.g., /../ or /./)
+            try {
+                const url = new URL(next, 'http://dummy.com');
+                // Only use pathname if protocol is http and hostname is dummy
+                if (url.protocol === 'http:' && url.hostname === 'dummy.com') {
+                    normalizedNext = url.pathname;
+                }
+            } catch {
+                normalizedNext = '/';
+            }
         }
     }
 
@@ -25,14 +39,11 @@ export async function GET(request: Request) {
 
         if (!error) {
             const forwardedHost = request.headers.get('x-forwarded-host')
-            const isLocal = process.env.NODE_ENV === 'development'
-
-            if (isLocal) {
-                return NextResponse.redirect(`${origin}${normalizedNext}`)
-            }
+            const forwardedProto = request.headers.get('x-forwarded-proto')
 
             if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${normalizedNext}`)
+                const proto = forwardedProto === 'https' ? 'https' : 'http';
+                return NextResponse.redirect(`${proto}://${forwardedHost}${normalizedNext}`)
             }
 
             return NextResponse.redirect(`${origin}${normalizedNext}`)

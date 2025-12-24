@@ -21,6 +21,7 @@ export default function Home() {
     queryFn: () => fetchRandomTracks(TRACKS_COUNT),
   });
 
+  // Supabaseクライアントをコンポーネントライフサイクル全体で再利用
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -30,7 +31,6 @@ export default function Home() {
     try {
       await supabase.auth.signOut();
       router.push("/login");
-      router.refresh();
     } catch (error) {
       console.error("Sign out error:", error);
       setIsSigningOut(false);
