@@ -39,13 +39,22 @@ Deno.serve(async (req: Request) => {
     // Authorization check - verify Bearer token against CRON_AUTH_KEY
     const authHeader = req.headers.get('Authorization');
     const cronAuthKey = Deno.env.get('CRON_AUTH_KEY');
-    const expectedAuth = `Bearer ${cronAuthKey}`;
-
+    const expectedAuth = cronAuthKey ? `Bearer ${cronAuthKey}` : '';
     const encoder = new TextEncoder();
     const authBytes = encoder.encode(authHeader || '');
     const expectedBytes = encoder.encode(expectedAuth);
 
-    if (!cronAuthKey || authBytes.length !== expectedBytes.length || !crypto.subtle.timingSafeEqual(authBytes, expectedBytes)) {
+    // 長さが異なる場合や CRON_AUTH_KEY 未設定の場合は即座に拒否
+    if (!cronAuthKey || authBytes.length !== expectedBytes.length) {
+        console.error('Unauthorized request');
+        return new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+    }
+
+    // 定数時間比較でタイミング攻撃を防止
+    if (!crypto.subtle.timingSafeEqual(authBytes, expectedBytes)) {
         console.error('Unauthorized request');
         return new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
