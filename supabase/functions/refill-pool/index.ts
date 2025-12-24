@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
                 artist_name: item.artistName,
                 collection_name: item.collectionName || null,
                 preview_url: previewUrl, // ✅ iTunes Search API から取得した previewUrl
-                artwork_url: item.artworkUrl100 || null,
+                artwork_url: item.artworkUrl100?.replace('100x100bb', '1000x1000bb') || null, // ✅ 高画質化
                 track_view_url: item.url || null, // ✅ Apple Music ページ URL
                 genre: item.genres?.[0]?.name || null,
                 release_date: item.releaseDate || null,
