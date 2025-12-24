@@ -183,7 +183,8 @@ describe('fetchTracksFromChart', () => {
             fetchMock.mockResolvedValueOnce({
                 ok: false,
                 status: 429,
-                statusText: 'Too Many Requests',                json: async () => ({}),            });
+                statusText: 'Too Many Requests', json: async () => ({}),
+            });
 
             await expect(fetchTracksFromChart(10)).rejects.toThrow(
                 'Apple RSS Charts API rate limit exceeded'
@@ -194,7 +195,8 @@ describe('fetchTracksFromChart', () => {
             fetchMock.mockResolvedValueOnce({
                 ok: false,
                 status: 500,
-                statusText: 'Internal Server Error',                json: async () => ({}),            });
+                statusText: 'Internal Server Error', json: async () => ({}),
+            });
 
             await expect(fetchTracksFromChart(10)).rejects.toThrow(
                 'Apple RSS Charts API request failed with status 500'
@@ -213,7 +215,7 @@ describe('fetchTracksFromChart', () => {
     describe('タイムアウト処理', () => {
         it('should use timeout mechanism with AbortController', async () => {
             let abortSignal: AbortSignal | undefined;
-            
+
             fetchMock.mockImplementationOnce((url, options) => {
                 abortSignal = options.signal;
                 return Promise.resolve({
@@ -245,7 +247,7 @@ describe('fetchTracksFromChartWithRetry', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         // Suppress console.error for retry tests
-        jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(console, 'error').mockImplementation(() => { });
         fetchMock = jest.spyOn(global, 'fetch').mockImplementation();
     });
 
@@ -309,7 +311,7 @@ describe('fetchTracksFromChartWithRetry', () => {
 
             // 最初の呼び出しが失敗
             await jest.advanceTimersByTimeAsync(0);
-            
+
             // リトライの遅延を待つ（指数バックオフ: 100ms * 2^0 = 100ms + ジッター）
             await jest.advanceTimersByTimeAsync(200);
 
@@ -321,25 +323,25 @@ describe('fetchTracksFromChartWithRetry', () => {
 
         it('should throw error after max retries', async () => {
             jest.useRealTimers();
-            
+
             fetchMock.mockRejectedValue(new Error('Network error'));
 
             await expect(
                 fetchTracksFromChartWithRetry(10, 2, 10) // maxRetries=2, baseDelay=10ms for speed
             ).rejects.toThrow('Failed to fetch tracks after 2 attempts');
-            
+
             expect(fetchMock).toHaveBeenCalledTimes(2);
         });
 
         it('should use default maxRetries of 3', async () => {
             jest.useRealTimers();
-            
+
             fetchMock.mockRejectedValue(new Error('Network error'));
 
             await expect(
                 fetchTracksFromChartWithRetry(10, 3, 10) // baseDelay=10ms for speed
             ).rejects.toThrow();
-            
+
             expect(fetchMock).toHaveBeenCalledTimes(3);
         });
     });
@@ -383,7 +385,7 @@ describe('fetchTracksFromChartWithRetry', () => {
             const promise = fetchTracksFromChartWithRetry(10, 3, 1000, 30000, 0);
 
             await jest.advanceTimersByTimeAsync(100000);
-            
+
             const tracks = await promise;
 
             // 指数的バックオフで3回試行（1回目失敗、2回目失敗、3回目成功）
@@ -393,7 +395,7 @@ describe('fetchTracksFromChartWithRetry', () => {
 
         it('should respect maxDelay parameter', async () => {
             jest.useRealTimers();
-            
+
             fetchMock.mockRejectedValue(new Error('Network error'));
 
             await expect(
@@ -408,7 +410,7 @@ describe('fetchTracksFromChartWithRetry', () => {
     describe('ジッター', () => {
         it('should apply jitter to delay', async () => {
             jest.useRealTimers();
-            
+
             fetchMock.mockRejectedValue(new Error('Network error'));
 
             // ジッター有効（jitterFactor: 0.5）
@@ -422,7 +424,7 @@ describe('fetchTracksFromChartWithRetry', () => {
 
         it('should ensure delay is non-negative even with jitter', async () => {
             jest.useRealTimers();
-            
+
             fetchMock.mockRejectedValue(new Error('Network error'));
 
             await expect(

@@ -142,17 +142,17 @@ Deno.serve(async (req: Request) => {
 
         // iTunes Search API から previewUrl を取得しながら TrackPoolEntry を作成
         const tracksToUpsert: TrackPoolEntry[] = [];
-        
+
         for (const item of results) {
             // iTunes Search API から previewUrl を取得
             const previewUrl = await getPreviewUrlFromItunesApi(item.id);
-            
+
             // previewUrl がない場合はスキップ
             if (!previewUrl) {
                 console.warn(`Skipping track ${item.id} (${item.name}) - no previewUrl available`);
                 continue;
             }
-            
+
             tracksToUpsert.push({
                 track_id: item.id,
                 track_name: item.name,
