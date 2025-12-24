@@ -141,7 +141,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
         <AudioProgressBar progress={progress} />
       </div>
       {isRefilling && (
-        <div className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white">
+        <div role="status" className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white">
           楽曲を補充中...
         </div>
       )}
