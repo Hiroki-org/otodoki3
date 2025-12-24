@@ -31,9 +31,20 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    try {
+        const {
+            data: { user: fetchedUser },
+        } = await supabase.auth.getUser()
+        user = fetchedUser
+    } catch (error) {
+        console.error('Error getting user in middleware:', error)
+        // On auth error, redirect to login
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+    }
+
     const path = request.nextUrl.pathname
 
     if (publicPaths.some((publicPath) => path.startsWith(publicPath))) {
@@ -43,13 +54,27 @@ export async function middleware(request: NextRequest) {
     if (!user) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
-        return NextResponse.redirect(url)
+        const redirectResponse = NextResponse.redirect(url)
+        // Copy cookies from supabaseResponse to preserve session
+        supabaseResponse.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'set-cookie') {
+                redirectResponse.headers.append(key, value)
+            }
+        })
+        return redirectResponse
     }
 
     if (user.email && !isAllowedEmail(user.email)) {
         const url = request.nextUrl.clone()
         url.pathname = '/waitlist'
-        return NextResponse.redirect(url)
+        const redirectResponse = NextResponse.redirect(url)
+        // Copy cookies from supabaseResponse to preserve session
+        supabaseResponse.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'set-cookie') {
+                redirectResponse.headers.append(key, value)
+            }
+        })
+        return redirectResponse
     }
 
     return supabaseResponse

@@ -50,7 +50,7 @@ Required environment variables for authentication:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-ALLOWED_EMAILS=muika0923@gmail.com
+ALLOWED_EMAILS=user@example.com
 ```
 
 `ALLOWED_EMAILS` should be a comma-separated list of addresses allowed to sign in while the closed beta is running.

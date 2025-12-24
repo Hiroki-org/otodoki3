@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
@@ -21,15 +21,21 @@ export default function Home() {
     queryFn: () => fetchRandomTracks(TRACKS_COUNT),
   });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign out error:", error);
+      setIsSigningOut(false);
+      alert("ログアウトに失敗しました。再度お試しください。");
+    }
   };
 
   const renderContent = () => {

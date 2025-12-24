@@ -1,12 +1,31 @@
 import { redirect } from "next/navigation";
+import { useFormStatus } from "react-dom";
 
 import { createClient } from "@/lib/supabase/server";
 
+function SignOutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="px-6 py-2 text-sm text-gray-600 hover:text-gray-800 underline disabled:opacity-50"
+    >
+      {pending ? "処理中..." : "別のアカウントでログイン"}
+    </button>
+  );
+}
+
 export default async function WaitlistPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("Error getting user:", error);
+    redirect("/login");
+  }
+
+  const user = data.user;
 
   const handleSignOut = async () => {
     "use server";
@@ -32,12 +51,7 @@ export default async function WaitlistPage() {
           </p>
         )}
         <form action={handleSignOut}>
-          <button
-            type="submit"
-            className="px-6 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-          >
-            別のアカウントでログイン
-          </button>
+          <SignOutButton />
         </form>
       </div>
     </div>
