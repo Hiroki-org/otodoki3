@@ -49,7 +49,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
     play(top.preview_url);
     // 指示: 依存配列は track_id のみ（ジェスチャー起点を維持したい）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stack[0]?.track_id, stack[0]?.type]);
+  }, [stack[0]?.type === 'track' ? stack[0].track_id : stack[0]?.id]);
 
   const swipeTop = (direction: SwipeDirection, item: CardItem) => {
     // ユーザージェスチャー内で同期的に停止（自動再生ポリシー対策）

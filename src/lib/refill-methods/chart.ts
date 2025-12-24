@@ -142,6 +142,7 @@ export async function fetchTracksFromChart(
             }
 
             const track: Track = {
+                type: 'track',  // ← 追加
                 track_id: item.id,
                 track_name: item.name,
                 artist_name: item.artistName,

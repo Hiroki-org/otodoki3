@@ -38,14 +38,14 @@ const SNAP_BACK_SPRING = {
 } as const;
 
 interface SwipeableCardProps {
-  track: CardItem;
+  item: CardItem;
   isTop: boolean;
   onSwipe: (direction: "left" | "right", item: CardItem) => void;
   index: number;
 }
 
 export function SwipeableCard({
-  track,
+  item,
   isTop,
   onSwipe,
   index,
@@ -142,16 +142,16 @@ export function SwipeableCard({
         transition: { duration: EXIT_DURATION_SEC },
       }}
       aria-label={
-        "type" in track && track.type === "tutorial"
+        item.type === "tutorial"
           ? "チュートリアルカードをスワイプ"
-          : `${track.track_name} by ${track.artist_name}をスワイプ`
+          : `${item.track_name} by ${item.artist_name}をスワイプ`
       }
       tabIndex={isTop ? 0 : -1}
     >
-      {"type" in track && track.type === "tutorial" ? (
+      {item.type === "tutorial" ? (
         <TutorialCard />
       ) : (
-        <TrackCard track={track as Track} />
+        <TrackCard track={item} />
       )}
     </motion.button>
   );
