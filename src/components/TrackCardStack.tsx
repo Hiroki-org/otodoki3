@@ -146,7 +146,7 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
         </div>
       )}
       {error && (
-        <div className="fixed bottom-4 right-4 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white">
+        <div role="alert" className="fixed bottom-4 right-4 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white">
           補充に失敗しました
         </div>
       )}
