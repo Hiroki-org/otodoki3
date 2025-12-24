@@ -209,7 +209,6 @@ export function TrackCardStack({ tracks }: { tracks: Track[] }) {
             300
           );
           toast.dismiss(pending);
-          toast.push({ type: "success", message: "いいねを保存しました" });
         } catch (err) {
           console.error("Failed to save like after retries", {
             track_id: id,
