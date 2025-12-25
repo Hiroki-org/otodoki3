@@ -12,9 +12,8 @@
     "test:ci": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:jest": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -36,6 +35,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.16",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.2.3",
     "eslint": "^9",
