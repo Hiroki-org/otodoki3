@@ -47,7 +47,7 @@ export default defineConfig({
             NEXT_PUBLIC_SUPABASE_ANON_KEY,
             TEST_USER_EMAIL,
             TEST_USER_PASSWORD,
-            ALLOWED_EMAILS: ALLOWED_EMAILS || TEST_USER_EMAIL,
+            ALLOWED_EMAILS: ALLOWED_EMAILS ?? TEST_USER_EMAIL,
         },
     },
 });
