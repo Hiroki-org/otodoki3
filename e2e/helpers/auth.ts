@@ -32,7 +32,7 @@ export async function loginAsTestUser(page: Page) {
     await loginButton.click();
 
     // ログイン完了を待機（ホーム画面へのリダイレクトまで）
-    await page.waitForURL('/', { timeout: 10000 });
+    await page.waitForURL('**/', { timeout: 10000 });
 }
 
 /**
@@ -41,6 +41,8 @@ export async function loginAsTestUser(page: Page) {
 export async function logout(page: Page) {
     await page.context().clearCookies();
     await page.context().clearPermissions();
+    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => sessionStorage.clear());
 }
 
 /**

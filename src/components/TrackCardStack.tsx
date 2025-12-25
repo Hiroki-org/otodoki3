@@ -79,8 +79,6 @@ const fetchWithRetry = async (
 export function TrackCardStack({
   tracks,
   mode = "discover",
-  // NOTE: Intentionally unused - reserved for future playlist-to-playlist move feature
-  sourcePlaylist: _sourcePlaylist,
 }: {
   tracks: Track[];
   mode?: "discover" | "playlist";
