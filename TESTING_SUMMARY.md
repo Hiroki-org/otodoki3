@@ -2,23 +2,24 @@
 
 ## 実装概要
 
-このPRは、issue で要求されているテスト環境の整備とJest単体テストの実装を完了しました。
+このPRは、issue で要求されているテスト環境の整備とVitestによる単体テスト・統合テストの実装を完了しました。
 
 ## 実装内容
 
 ### 1. テスト環境設定
 
-#### Jest設定 (`jest.config.js`)
-- TypeScript サポート (ts-jest)
+#### Vitest設定 (`vitest.config.ts`)
+- TypeScript サポート
 - カバレッジ閾値: 80% (branches, functions, lines, statements)
 - カバレッジレポート: text, lcov, html
-- テストパス: `src/**/__tests__/**/*.test.ts`
+- テストパス: `src/**/*.{test,spec}.{ts,tsx}`
 
 #### CI/CD設定 (`.github/workflows/ci.yml`)
 - テスト用環境変数の設定
   - `NEXT_PUBLIC_SUPABASE_URL_TEST`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST`
   - `TRACK_POOL_MAX_SIZE_TEST`
+- Vitestによるテスト実行
 
 ### 2. テストフィクスチャ
 
@@ -135,7 +136,7 @@
 #### モック vs 統合テスト
 - **モックテスト**: 
   - 外部API (Apple RSS) は完全にモック化
-  - `jest.spyOn(global, 'fetch')` を使用
+  - `vi.spyOn(global, 'fetch')` を使用
   - Supabase接続不要
 
 - **統合テスト**: 
@@ -223,7 +224,7 @@ CodeQL スキャン結果: **0 alerts** ✅
 
 ### 実施した改善
 1. **テスト隔離性の向上**
-   - `global.fetch = jest.fn()` → `jest.spyOn(global, 'fetch')` に変更
+   - `global.fetch = jest.fn()` → `vi.spyOn(global, 'fetch')` に変更
    - 各テスト後に自動リストア
 
 2. **エラーハンドリング改善**
@@ -253,7 +254,7 @@ CodeQL スキャン結果: **0 alerts** ✅
 ## 結論
 
 ✅ **テスト環境の整備完了**
-✅ **Jest単体テストの実装完了**
+✅ **Vitest単体テストの実装完了**
 ✅ **カバレッジ目標達成** (chart.ts: 93.47%)
 ✅ **セキュリティスキャン通過** (0 alerts)
 ✅ **コードレビュー対応完了**
