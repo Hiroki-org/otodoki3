@@ -39,17 +39,28 @@ export async function loginAsTestUser(page: Page) {
  * 認証状態をクリアしてログアウト
  */
 export async function logout(page: Page) {
-    // ページがまだナビゲートされていない場合（about:blankなど）、
-    // localStorageにアクセスできないため、まず有効なURLにナビゲートする
+    // ページがまだナビゲートされていない場合（about:blankなど）や、
+    // ローカルオリジンでない場合はアプリのルートに移動してからストレージ操作を行う
     const currentUrl = page.url();
-    if (currentUrl === 'about:blank' || currentUrl === '') {
+    if (currentUrl === 'about:blank' || currentUrl === '' || !currentUrl.includes('localhost')) {
         await page.goto('/');
+        await page.waitForLoadState('networkidle');
     }
-    
+
+    try {
+        await page.evaluate(() => {
+            localStorage.clear();
+            sessionStorage.clear();
+        });
+    } catch (e) {
+        // セキュリティエラーなどで localStorage にアクセスできない場合は無視する
+        // Playwright の実行ログに残す
+        // eslint-disable-next-line no-console
+        console.warn('Could not clear local/session storage during logout:', e);
+    }
+
     await page.context().clearCookies();
     await page.context().clearPermissions();
-    await page.evaluate(() => localStorage.clear());
-    await page.evaluate(() => sessionStorage.clear());
 }
 
 /**
