@@ -33,11 +33,11 @@ export default function PlaylistDetailPage() {
       try {
         const res = await fetch(`/api/playlists/${id}`);
 
-        // === デバッグログ追加 ===
-        console.log("=== Playlist Detail Fetch ===");
-        console.log("Status:", res.status);
-        console.log("OK:", res.ok);
-        // === ここまで ===
+        if (process.env.NODE_ENV === 'development') {
+          console.log("=== Playlist Detail Fetch ===");
+          console.log("Status:", res.status);
+          console.log("OK:", res.ok);
+        }
 
         if (res.status === 401 || res.status === 403) {
           router.push("/login");
@@ -51,11 +51,11 @@ export default function PlaylistDetailPage() {
 
         const responseData = await res.json();
 
-        // === デバッグログ追加 ===
-        console.log("Response data:", responseData);
-        console.log("Tracks:", responseData.tracks);
-        console.log("Tracks length:", responseData.tracks?.length);
-        // === ここまで ===
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Response data:", responseData);
+          console.log("Tracks:", responseData.tracks);
+          console.log("Tracks length:", responseData.tracks?.length);
+        }
 
         setTracks(responseData.tracks || []);
       } catch (err) {

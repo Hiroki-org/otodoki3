@@ -41,15 +41,17 @@ export async function GET() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-    // === デバッグログ追加 ===
-    console.log('=== Likes API Debug ===');
-    console.log('Raw data:', JSON.stringify(data, null, 2));
-    console.log('Error:', error);
-    console.log('Data length:', data?.length);
-    if (data && data.length > 0) {
-        console.log('First item structure:', JSON.stringify(data[0], null, 2));
+    if (process.env.NODE_ENV === 'development') {
+        // === デバッグログ追加 ===
+        console.log('=== Likes API Debug ===');
+        console.log('Raw data:', JSON.stringify(data, null, 2));
+        console.log('Error:', error);
+        console.log('Data length:', data?.length);
+        if (data && data.length > 0) {
+            console.log('First item structure:', JSON.stringify(data[0], null, 2));
+        }
+        // === ここまで ===
     }
-    // === ここまで ===
 
     if (error) {
         console.error('Failed to fetch likes:', error);
