@@ -4,6 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
+import { Layout } from "@/components/Layout";
+
 type Track = {
   track_id: string;
   type: "track";
@@ -84,68 +86,72 @@ export default function PlaylistDetailPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        読み込み中...
-      </div>
+      <Layout>
+        <div className="bg-black text-white flex items-center justify-center">
+          読み込み中...
+        </div>
+      </Layout>
     );
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-6xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.push("/playlists")}
-              className="text-2xl hover:opacity-70"
-              aria-label="戻る"
-            >
-              ←
-            </button>
-            <span className="text-3xl">{playlistMeta.icon}</span>
-            <h1 className="text-2xl font-bold">{playlistMeta.name}</h1>
-          </div>
-          <Link
-            href={`/playlists/${id}/swipe`}
-            className="px-4 py-2 bg-green-500 rounded-full text-sm font-medium"
-          >
-            スワイプで再評価
-          </Link>
-        </div>
-
-        {tracks.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">曲がありません</p>
-        ) : (
-          <div
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-            data-testid="track-list"
-          >
-            {tracks.map((track) => (
+    <Layout>
+      <div className="bg-black text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-6xl">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
               <button
-                key={track.track_id}
                 type="button"
-                onClick={() => handlePlay(track)}
-                className="bg-gray-800 rounded-lg p-3 text-left hover:bg-gray-700"
+                onClick={() => router.push("/playlists")}
+                className="rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 text-lg"
+                aria-label="戻る"
               >
-                <Image
-                  src={track.artwork_url}
-                  alt={track.track_name}
-                  width={200}
-                  height={200}
-                  className="w-full aspect-square object-cover rounded mb-2"
-                />
-                <p className="font-medium truncate">{track.track_name}</p>
-                <p className="text-sm text-gray-400 truncate">
-                  {track.artist_name}
-                </p>
-                {playingId === track.track_id && (
-                  <span className="text-green-400 text-xs">▶ 再生中</span>
-                )}
+                ←
               </button>
-            ))}
+              <span className="text-3xl">{playlistMeta.icon}</span>
+              <h1 className="text-2xl font-bold">{playlistMeta.name}</h1>
+            </div>
+            <Link
+              href={`/playlists/${id}/swipe`}
+              className="rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm"
+            >
+              スワイプで再評価
+            </Link>
           </div>
-        )}
+
+          {tracks.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">曲がありません</p>
+          ) : (
+            <div
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              data-testid="track-list"
+            >
+              {tracks.map((track) => (
+                <button
+                  key={track.track_id}
+                  type="button"
+                  onClick={() => handlePlay(track)}
+                  className="bg-gray-800 rounded-lg p-3 text-left hover:bg-gray-700"
+                >
+                  <Image
+                    src={track.artwork_url}
+                    alt={track.track_name}
+                    width={200}
+                    height={200}
+                    className="w-full aspect-square object-cover rounded mb-2"
+                  />
+                  <p className="font-medium truncate">{track.track_name}</p>
+                  <p className="text-sm text-gray-400 truncate">
+                    {track.artist_name}
+                  </p>
+                  {playingId === track.track_id && (
+                    <span className="text-green-400 text-xs">▶ 再生中</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
