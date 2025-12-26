@@ -394,10 +394,8 @@ export function TrackCardStack({
           type="button"
           onClick={handleDislikeClick}
           disabled={actionInProgress}
-          className={`flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform active:scale-95 ${
-            actionInProgress
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:scale-110"
+          className={`flex h-16 w-16 items-center justify-center rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-gray-200 hover:bg-gray-300 text-gray-800 ${
+            actionInProgress ? "opacity-50 cursor-not-allowed" : ""
           }`}
           aria-label="よくない"
         >
@@ -419,10 +417,8 @@ export function TrackCardStack({
           type="button"
           onClick={handleLikeClick}
           disabled={actionInProgress}
-          className={`flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-transform active:scale-95 ${
-            actionInProgress
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:scale-110"
+          className={`flex h-16 w-16 items-center justify-center rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-blue-600 hover:bg-blue-700 text-white ${
+            actionInProgress ? "opacity-50 cursor-not-allowed" : ""
           }`}
           aria-label="いいね"
         >

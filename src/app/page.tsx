@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
-import { createClient } from "@/lib/supabase/client";
+import { Layout } from "@/components/Layout";
 import { TrackCardStack } from "@/components/TrackCardStack";
 import { fetchRandomTracks } from "@/lib/api/tracks";
 
@@ -21,23 +18,6 @@ export default function Home() {
     queryKey: ["tracks", "random", TRACKS_COUNT],
     queryFn: () => fetchRandomTracks(TRACKS_COUNT),
   });
-
-  // Supabaseクライアントをコンポーネントライフサイクル全体で再利用
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await supabase.auth.signOut();
-      router.push("/login");
-    } catch (error) {
-      console.error("Sign out error:", error);
-      setIsSigningOut(false);
-      alert("ログアウトに失敗しました。再度お試しください。");
-    }
-  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -76,37 +56,21 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <main className="flex w-full flex-col items-center gap-6 py-10">
-        <header className="w-[92vw] max-w-sm">
-          <div className="flex items-start justify-between gap-4">
+    <Layout>
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+        <main className="flex w-full flex-col items-center gap-6 py-10">
+          <header className="w-[92vw] max-w-sm">
             <div>
               <h1 className="text-xl font-bold">ディスカバリー</h1>
               <p className="mt-1 text-sm opacity-70">
                 右スワイプ: Like / 左スワイプ: Skip
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/playlists"
-                className="rounded-full border border-green-200 px-3 py-1 text-sm font-semibold text-green-600 transition hover:bg-green-50"
-              >
-                📚 プレイリスト
-              </Link>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                className="rounded-full border border-red-200 px-3 py-1 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-              >
-                {isSigningOut ? "サインアウト中…" : "ログアウト"}
-              </button>
-            </div>
-          </div>
-        </header>
+          </header>
 
-        {renderContent()}
-      </main>
-    </div>
+          {renderContent()}
+        </main>
+      </div>
+    </Layout>
   );
 }

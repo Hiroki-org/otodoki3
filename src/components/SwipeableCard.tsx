@@ -230,7 +230,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
       <motion.div
         className="absolute inset-0 border-none bg-transparent p-0"
         style={{
-          zIndex: 100 - index, // Simple zIndex stack
+          zIndex: 10 - index, // Keep behind BottomNav(z-40)/Sidebar(z-30)
           x,
           rotate,
           opacity,
