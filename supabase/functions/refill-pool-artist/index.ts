@@ -7,6 +7,7 @@ declare const Deno: {
 
 const USER_AGENT = "otodoki3/1.0 (Supabase Edge Function)";
 const ITUNES_TIMEOUT_MS = 10000;
+const ARTIST_PICK_COUNT = 5;
 
 interface iTunesSearchResult {
     trackId: number;
@@ -145,7 +146,7 @@ Deno.serve(async (req: Request) => {
 
         // 1) Pick random tracks from pool
         const { data: randomTracks, error: randomError } = await supabase
-            .rpc('get_random_artists', { limit_count: 5 });
+            .rpc('get_random_artists', { limit_count: ARTIST_PICK_COUNT });
 
         if (randomError) throw randomError;
 
