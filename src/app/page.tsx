@@ -57,7 +57,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <div className="flex items-center justify-center bg-background text-foreground">
         <main className="flex w-full flex-col items-center gap-6 py-10">
           <header className="w-[92vw] max-w-sm">
             <div>

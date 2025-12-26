@@ -16,27 +16,35 @@ export function Layout({ children }: Props) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    let ignore = false;
+
     (async () => {
       try {
         const { data, error } = await supabase.auth.getUser();
-        if (!mounted) return;
+        if (ignore) return;
         setIsAuthenticated(!error && !!data.user);
       } catch {
-        if (!mounted) return;
+        if (ignore) return;
         setIsAuthenticated(false);
       }
     })();
 
+    // 認証状態の変更を監視
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (ignore) return;
+      setIsAuthenticated(!!session?.user);
+    });
+
     return () => {
-      mounted = false;
+      ignore = true;
+      subscription?.unsubscribe();
     };
   }, [supabase]);
 
   return (
     <div className="min-h-screen">
       {isAuthenticated ? <Sidebar /> : null}
-      <div className="md:ml-64 pb-20">{children}</div>
+      <div className={`pb-20 ${isAuthenticated ? "md:ml-64" : ""}`}>{children}</div>
       {isAuthenticated ? <BottomNav /> : null}
     </div>
   );

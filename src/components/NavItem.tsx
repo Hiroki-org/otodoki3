@@ -3,15 +3,27 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type Props = {
+type LinkProps = {
   icon: ReactNode;
   label: string;
   href: string;
   isActive: boolean;
-  onClick?: () => void;
+  onClick?: never;
 };
 
-export function NavItem({ icon, label, href, isActive, onClick }: Props) {
+type ButtonProps = {
+  icon: ReactNode;
+  label: string;
+  href?: never;
+  isActive: boolean;
+  onClick: () => void;
+};
+
+type Props = LinkProps | ButtonProps;
+
+export function NavItem(props: Props) {
+  const { icon, label, isActive } = props;
+
   const baseClasses =
     "relative flex flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 transition-all duration-200 md:flex-row md:justify-start md:gap-3";
 
@@ -19,10 +31,9 @@ export function NavItem({ icon, label, href, isActive, onClick }: Props) {
     ? "text-blue-600"
     : "text-foreground/70 hover:text-foreground";
 
-  const indicatorClasses =
-    "after:absolute after:content-[''] after:rounded-full " +
-    (isActive ? "after:bg-blue-600" : "after:bg-transparent") +
-    " after:bottom-0 after:left-1/2 after:h-0.5 after:w-6 after:-translate-x-1/2 md:after:bottom-auto md:after:left-0 md:after:top-1/2 md:after:h-6 md:after:w-0.5 md:after:-translate-y-1/2 md:after:translate-x-0";
+  const indicatorClasses = `after:absolute after:content-[''] after:rounded-full ${
+    isActive ? "after:bg-blue-600" : "after:bg-transparent"
+  } after:bottom-0 after:left-1/2 after:h-0.5 after:w-6 after:-translate-x-1/2 md:after:bottom-auto md:after:left-0 md:after:top-1/2 md:after:h-6 md:after:w-0.5 md:after:-translate-y-1/2 md:after:translate-x-0`;
 
   const content = (
     <>
@@ -35,11 +46,11 @@ export function NavItem({ icon, label, href, isActive, onClick }: Props) {
     </>
   );
 
-  if (onClick) {
+  if ("onClick" in props) {
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={props.onClick}
         className={`${baseClasses} ${activeClasses} ${indicatorClasses}`}
       >
         {content}
@@ -49,7 +60,7 @@ export function NavItem({ icon, label, href, isActive, onClick }: Props) {
 
   return (
     <Link
-      href={href}
+      href={props.href}
       aria-current={isActive ? "page" : undefined}
       className={`${baseClasses} ${activeClasses} ${indicatorClasses}`}
     >

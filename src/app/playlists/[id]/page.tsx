@@ -87,7 +87,7 @@ export default function PlaylistDetailPage() {
   if (loading)
     return (
       <Layout>
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="bg-black text-white flex items-center justify-center">
           読み込み中...
         </div>
       </Layout>
@@ -95,7 +95,7 @@ export default function PlaylistDetailPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+      <div className="bg-black text-white flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">

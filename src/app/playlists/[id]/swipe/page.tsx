@@ -46,7 +46,7 @@ export default function PlaylistSwipePage() {
   if (loading)
     return (
       <Layout>
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="bg-black text-white flex items-center justify-center">
           読み込み中...
         </div>
       </Layout>
@@ -54,7 +54,7 @@ export default function PlaylistSwipePage() {
   if (tracks.length === 0)
     return (
       <Layout>
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
+        <div className="bg-black text-white flex flex-col items-center justify-center gap-4">
           <p>曲がありません</p>
           <button
             type="button"
@@ -71,7 +71,7 @@ export default function PlaylistSwipePage() {
   // 補充なし + 終了時にメッセージ表示
   return (
     <Layout>
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="bg-black text-white p-4">
         <div className="mb-6 flex items-center gap-4">
           <button
             type="button"
