@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { setupAuthenticatedSession } from './helpers/auth';
 
+async function ensureTopIsTrackCard(page: import('@playwright/test').Page) {
+    const topSwipeable = page.locator('[aria-label$="をスワイプ"]').first();
+    await expect(topSwipeable).toBeVisible();
+
+    const label = await topSwipeable.getAttribute('aria-label');
+    if (label?.includes('チュートリアル')) {
+        // チュートリアルカードはネットワーク不要なので、確実なボタンクリックで除去
+        await page.locator('button[aria-label="いいね"]').click();
+        await expect.poll(async () => {
+            const next = await page.locator('[aria-label$="をスワイプ"]').first().getAttribute('aria-label');
+            return next ?? '';
+        }, { timeout: 5000 }).not.toContain('チュートリアル');
+    }
+}
+
 test.describe('ディスカバリー画面', () => {
     test.beforeEach(async ({ page }) => {
         // 認証済み状態でテストを開始
@@ -30,72 +45,37 @@ test.describe('ディスカバリー画面', () => {
         await page.goto('/');
         await page.waitForLoadState('networkidle');
 
-        // 最初のカードの情報を取得
-        const cards = page.locator('[data-testid="track-card"]').or(page.locator('article, [role="article"]'));
-        const firstCard = cards.first();
-        const firstCardText = await firstCard.textContent();
+        // 先頭がチュートリアルなら除去して、実トラックカードで検証する
+        await ensureTopIsTrackCard(page);
 
-        // Likeボタンを探してクリック、またはスワイプジェスチャーを実行
-        const likeButton = page.locator('button[aria-label*="Like"], button[aria-label*="お気に入り"], button:has-text("♥")').first();
+        const topSwipeable = page.locator('[aria-label$="をスワイプ"]').first();
+        const firstTopLabel = (await topSwipeable.getAttribute('aria-label')) ?? '';
 
-        if (await likeButton.isVisible({ timeout: 1000 })) {
-            await likeButton.click();
-        } else {
-            // ボタンが見つからない場合はスワイプジェスチャーを実行
-            const card = cards.first();
-            const box = await card.boundingBox();
+        // UI実装に合わせて確実にボタンをクリック
+        await page.locator('button[aria-label="いいね"]').click();
 
-            if (box) {
-                // 右方向にスワイプ
-                await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-                await page.mouse.down();
-                await page.mouse.move(box.x + box.width + 100, box.y + box.height / 2, { steps: 10 });
-                await page.mouse.up();
-            }
-        }
-
-        // 次のカードが表示されるまで待機
-        await expect(cards.first()).toBeVisible({ timeout: 5000 });
-
-        // カードが更新されたことを確認（内容が変わった）
-        const newFirstCardText = await cards.first().textContent();
-        expect(newFirstCardText).not.toBe(firstCardText);
+        await expect.poll(async () => {
+            const next = await page.locator('[aria-label$="をスワイプ"]').first().getAttribute('aria-label');
+            return next ?? '';
+        }, { timeout: 5000 }).not.toBe(firstTopLabel);
     });
 
     test('左スワイプ（Dislike）で次のカードが表示される', async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('networkidle');
 
-        // 最初のカードの情報を取得
-        const cards = page.locator('[data-testid="track-card"]').or(page.locator('article, [role="article"]'));
-        const firstCard = cards.first();
-        const firstCardText = await firstCard.textContent();
+        // 先頭がチュートリアルなら除去して、実トラックカードで検証する
+        await ensureTopIsTrackCard(page);
 
-        // Dislikeボタンを探してクリック、またはスワイプジェスチャーを実行
-        const dislikeButton = page.locator('button[aria-label*="Dislike"], button[aria-label*="興味なし"], button:has-text("✕")').first();
+        const topSwipeable = page.locator('[aria-label$="をスワイプ"]').first();
+        const firstTopLabel = (await topSwipeable.getAttribute('aria-label')) ?? '';
 
-        if (await dislikeButton.isVisible({ timeout: 1000 })) {
-            await dislikeButton.click();
-        } else {
-            // ボタンが見つからない場合はスワイプジェスチャーを実行
-            const card = cards.first();
-            const box = await card.boundingBox();
+        await page.locator('button[aria-label="よくない"]').click();
 
-            if (box) {
-                // 左方向にスワイプ
-                await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-                await page.mouse.down();
-                await page.mouse.move(box.x - 100, box.y + box.height / 2, { steps: 10 });
-                await page.mouse.up();
-            }
-        }
-
-        // 次のカードが表示されるまで待機
-        await expect(cards.first()).toBeVisible({ timeout: 5000 });
-
-        // カードが更新されたことを確認
-        const newFirstCardText = await cards.first().textContent();
-        expect(newFirstCardText).not.toBe(firstCardText);
+        await expect.poll(async () => {
+            const next = await page.locator('[aria-label$="をスワイプ"]').first().getAttribute('aria-label');
+            return next ?? '';
+        }, { timeout: 5000 }).not.toBe(firstTopLabel);
     });
 
     test('Likeボタンクリックで動作する', async ({ page }) => {
