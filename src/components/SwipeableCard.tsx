@@ -258,6 +258,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
             ? "チュートリアルカードをスワイプ"
             : `${item.track_name} by ${item.artist_name}をスワイプ`
         }
+        aria-hidden={exitX !== null}
         tabIndex={isTop ? 0 : -1}
       >
         {/* リアクションアイコンアニメーション */}

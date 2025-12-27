@@ -97,6 +97,7 @@ export function TrackCardStack({
   const { play, stop, pause, resume, isPlaying, progress } = useAudioPlayer();
   const hasUserInteractedRef = useRef(false);
   const topCardRef = useRef<SwipeableCardRef>(null);
+  const rollbackCounterRef = useRef(0); // ロールバック時にkeyを変更するためのカウンター
 
   const handleRefill = useCallback((newTracks: CardItem[]) => {
     setStack((prev) => {
@@ -178,9 +179,17 @@ export function TrackCardStack({
 
     // 楽曲カード処理
     const track = item as Track;
+    console.log(
+      `[swipeTop] Starting swipe ${direction} for track:`,
+      track.track_id
+    );
 
     // optimistic remove
     setStack((prev) => {
+      console.log(
+        `[swipeTop] Before optimistic remove, stack length:`,
+        prev.length
+      );
       if (prev.length === 0) return prev;
       const top = prev[0];
       if (
@@ -188,9 +197,14 @@ export function TrackCardStack({
         "track_id" in track &&
         top.track_id === track.track_id
       ) {
-        return prev.slice(1);
+        const newStack = prev.slice(1);
+        console.log(
+          `[swipeTop] After optimistic remove (slice), stack length:`,
+          newStack.length
+        );
+        return newStack;
       }
-      return prev.filter(
+      const newStack = prev.filter(
         (t) =>
           !(
             "track_id" in t &&
@@ -198,6 +212,11 @@ export function TrackCardStack({
             t.track_id === track.track_id
           )
       );
+      console.log(
+        `[swipeTop] After optimistic remove (filter), stack length:`,
+        newStack.length
+      );
+      return newStack;
     });
 
     if (direction === "right") {
@@ -207,7 +226,8 @@ export function TrackCardStack({
       (async () => {
         setActionInProgress(true);
         try {
-          await fetchWithRetry(
+          console.log(`[API] Calling /api/tracks/like for track:`, id);
+          const response = await fetchWithRetry(
             "/api/tracks/like",
             {
               method: "POST",
@@ -218,16 +238,30 @@ export function TrackCardStack({
             5000,
             300
           );
+          console.log(`[API] Like succeeded for track:`, id);
         } catch (err) {
           console.error("Failed to save like after retries", {
             track_id: id,
             error: err,
           });
+          console.log(`[Rollback] Rolling back like for track:`, id);
           toast.push({ type: "error", message: "いいねの保存に失敗しました" });
           // rollback: reinsert item at top
-          setStack((prev) => [track, ...prev]);
+          setStack((prev) => {
+            console.log(
+              `[Rollback] Before rollback, stack length:`,
+              prev.length
+            );
+            const newStack = [track, ...prev];
+            console.log(
+              `[Rollback] After rollback, stack length:`,
+              newStack.length
+            );
+            return newStack;
+          });
         } finally {
           setActionInProgress(false);
+          console.log(`[API] actionInProgress set to false`);
         }
       })();
     } else {
@@ -237,6 +271,7 @@ export function TrackCardStack({
       (async () => {
         setActionInProgress(true);
         try {
+          console.log(`[API] Calling /api/tracks/dislike for track:`, id);
           const pending = toast.push(
             { type: "info", message: "スキップを保存しています..." },
             10000
@@ -252,6 +287,7 @@ export function TrackCardStack({
             5000,
             300
           );
+          console.log(`[API] Dislike succeeded for track:`, id);
           toast.dismiss(pending);
           // toast.push({ type: "success", message: "スキップを保存しました" }); // 通知を削除
         } catch (err) {
@@ -259,14 +295,27 @@ export function TrackCardStack({
             track_id: id,
             error: err,
           });
+          console.log(`[Rollback] Rolling back dislike for track:`, id);
           toast.push({
             type: "error",
             message: "スキップの保存に失敗しました",
           });
           // rollback on final failure
-          setStack((prev) => [track, ...prev]);
+          setStack((prev) => {
+            console.log(
+              `[Rollback] Before rollback, stack length:`,
+              prev.length
+            );
+            const newStack = [track, ...prev];
+            console.log(
+              `[Rollback] After rollback, stack length:`,
+              newStack.length
+            );
+            return newStack;
+          });
         } finally {
           setActionInProgress(false);
+          console.log(`[API] actionInProgress set to false`);
         }
       })();
     }
