@@ -1,20 +1,13 @@
 import type { Track } from "@/types/track-pool";
+import { parseJsonResponse } from "./utils";
 
 export async function fetchRandomTracks(count: number): Promise<Track[]> {
   const res = await fetch(`/api/tracks/random?count=${count}`);
 
-  const contentType = res.headers.get("content-type");
-  if (!contentType || !contentType.includes("application/json")) {
-    const text = await res.text();
-    console.error("Expected JSON but received:", text.substring(0, 100));
-    throw new Error(
-      "サーバーから予期しないレスポンス（HTML）が返されました。ログイン状態を確認してください。"
-    );
-  }
-
-  const json = (await res.json()) as
+  const json = await parseJsonResponse<
     | { success: true; tracks: Track[] }
-    | { success: false; error: string };
+    | { success: false; error: string }
+  >(res);
 
   if (!res.ok || !json.success) {
     const message = "error" in json ? json.error : "Failed to fetch tracks";

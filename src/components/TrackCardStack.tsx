@@ -99,6 +99,15 @@ export function TrackCardStack({
   const topCardRef = useRef<SwipeableCardRef>(null);
   const lastPlayedUrlRef = useRef<string | null>(null);
 
+  // 音声再生ヘルパー: URL の重複チェックと再生開始を一箇所に集約
+  const playTrack = useCallback(
+    (url: string) => {
+      play(url);
+      lastPlayedUrlRef.current = url;
+    },
+    [play]
+  );
+
   const handleRefill = useCallback((newTracks: CardItem[]) => {
     setStack((prev) => {
       // 既存のtrack_idを収集
@@ -160,8 +169,7 @@ export function TrackCardStack({
     // すでに再生指示済みのURLならスキップ（swipeTopでの先行再生との重複防止）
     if (lastPlayedUrlRef.current === top.preview_url) return;
 
-    play(top.preview_url);
-    lastPlayedUrlRef.current = top.preview_url;
+    playTrack(top.preview_url);
     // NOTE: We intentionally use stack[0] (complex expression) instead of stack to avoid re-running
     // this effect on every stack change. We only want to run when the top card changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,8 +187,7 @@ export function TrackCardStack({
 
     // ユーザージェスチャーのコンテキスト内で同期的に play() を開始
     if (nextCard && "track_id" in nextCard && nextCard.preview_url) {
-      play(nextCard.preview_url);
-      lastPlayedUrlRef.current = nextCard.preview_url;
+      playTrack(nextCard.preview_url);
     }
 
     // チュートリアルカード判定
@@ -307,7 +314,7 @@ export function TrackCardStack({
         if (progress > 0) {
           resume();
         } else {
-          play(top.preview_url);
+          playTrack(top.preview_url);
         }
       }
     }
