@@ -213,6 +213,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
         (offset < -swipeThreshold || velocity < -VELOCITY_THRESHOLD_PX_PER_SEC);
 
       if (swipedRight) {
+        isSwipingRef.current = true;
         flushSync(() => {
           setExitX(EXIT_X_OFFSET_PX);
           setShowReaction("like");
@@ -225,6 +226,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           swipeTimeoutRef.current = null;
         }, EXIT_DURATION_SEC * 1000);
       } else if (swipedLeft) {
+        isSwipingRef.current = true;
         flushSync(() => {
           setExitX(-EXIT_X_OFFSET_PX);
           setShowReaction("skip");
