@@ -115,6 +115,8 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           swipeTimeoutRef.current = window.setTimeout(() => {
             onSwipe("left", item);
             setShowReaction(null);
+            isSwipingRef.current = false;
+            swipeTimeoutRef.current = null;
           }, EXIT_DURATION_SEC * 1000);
         },
         swipeRight: () => {
@@ -137,6 +139,8 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           swipeTimeoutRef.current = window.setTimeout(() => {
             onSwipe("right", item);
             setShowReaction(null);
+            isSwipingRef.current = false;
+            swipeTimeoutRef.current = null;
           }, EXIT_DURATION_SEC * 1000);
         },
       }),
@@ -211,6 +215,8 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
         swipeTimeoutRef.current = window.setTimeout(() => {
           onSwipe("right", item);
           setShowReaction(null);
+          isSwipingRef.current = false;
+          swipeTimeoutRef.current = null;
         }, EXIT_DURATION_SEC * 1000);
       } else if (swipedLeft) {
         flushSync(() => {
@@ -220,9 +226,12 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
         swipeTimeoutRef.current = window.setTimeout(() => {
           onSwipe("left", item);
           setShowReaction(null);
+          isSwipingRef.current = false;
+          swipeTimeoutRef.current = null;
         }, EXIT_DURATION_SEC * 1000);
       } else {
         animate(x, 0, SNAP_BACK_SPRING);
+        isSwipingRef.current = false;
       }
     };
 
