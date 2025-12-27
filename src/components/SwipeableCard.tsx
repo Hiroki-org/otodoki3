@@ -224,7 +224,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
         scheduleSwipeCompletion("left");
       } else {
         animate(x, 0, SNAP_BACK_SPRING);
-        // Reset swipe lock immediately since snap-back animation completes synchronously without timeout
+        // Snap-back uses framer-motion animation without the swipe completion timeout, so unlock immediately
         isSwipingRef.current = false;
       }
     };
