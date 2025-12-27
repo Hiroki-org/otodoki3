@@ -31,8 +31,8 @@ interface iTunesSearchResponse {
 }
 
 interface LastFmArtistStats {
-    listeners: string;
-    playcount: string;
+    listeners?: string;
+    playcount?: string;
 }
 
 interface LastFmArtist {
@@ -42,6 +42,8 @@ interface LastFmArtist {
 
 interface LastFmSearchResponse {
     artist?: LastFmArtist;
+    error?: number;
+    message?: string;
 }
 
 interface TrackPoolEntry {
@@ -156,7 +158,14 @@ async function getArtistListeners(artistName: string): Promise<number | null> {
         }
 
         const data = (await response.json()) as LastFmSearchResponse;
-        const listeners = parseInt(data?.artist?.stats?.listeners ?? '0', 10);
+        if (data?.error) return null;
+
+        const listenersRaw = data?.artist?.stats?.listeners;
+        if (typeof listenersRaw !== 'string') return null;
+
+        const listeners = parseInt(listenersRaw, 10);
+        if (!Number.isFinite(listeners)) return null;
+
         return listeners;
     } catch (error) {
         console.warn(`Failed to fetch Last.fm data for artist: ${artistName}`, error);
@@ -256,8 +265,10 @@ Deno.serve(async (req: Request) => {
                     console.log(`[Artist: ${artistName}] Listeners: ${listeners}`);
                 }
 
-                // レート制限対策: Last.fm API呼び出し後に待機
-                await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+                // レート制限対策: Last.fm API呼び出し後に待機（APIキー設定時のみ）
+                if (LAST_FM_API_KEY) {
+                    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+                }
 
                 // iTunes API で楽曲を取得
                 const items = await fetchItunesSearchByArtist(artistName);
