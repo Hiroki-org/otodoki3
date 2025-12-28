@@ -89,15 +89,45 @@ export function useAudioPlayer() {
         audio.volume = 0;
 
         // If we're switching URLs, abort any in-flight request first.
-        if (audio.src && audio.src !== trimmed) {
-            audio.pause();
-            audio.src = "";
-            audio.load();
+        try {
+            if (audio.src && audio.src !== trimmed) {
+                audio.pause();
+                audio.src = "";
+                audio.load();
+            }
+        } catch (err) {
+            console.error("Failed to abort previous preload", err, { src: audio?.src });
+            // Best-effort to leave the element in a safe state
+            try {
+                audio.pause();
+            } catch (_) {
+                /* ignore */
+            }
+            try {
+                audio.src = "";
+            } catch (_) {
+                /* ignore */
+            }
         }
 
-        if (audio.src !== trimmed) {
-            audio.src = trimmed;
-            audio.load();
+        try {
+            if (audio.src !== trimmed) {
+                audio.src = trimmed;
+                audio.load();
+            }
+        } catch (err) {
+            console.error("Failed to preload audio", err, { src: trimmed });
+            // Ensure the element is not pointing to a broken src
+            try {
+                audio.pause();
+            } catch (_) {
+                /* ignore */
+            }
+            try {
+                audio.src = "";
+            } catch (_) {
+                /* ignore */
+            }
         }
     }, []);
 
