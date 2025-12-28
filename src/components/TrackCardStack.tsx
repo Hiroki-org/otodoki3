@@ -365,8 +365,8 @@ export function TrackCardStack({
 
     return (
       <div className="flex flex-col items-center gap-8">
-        <div className="flex h-[min(85vw,340px)] w-[min(85vw,340px)] items-center justify-center rounded-3xl border border-black/8 bg-background text-foreground dark:border-white/15">
-          <p className="text-sm opacity-80">{emptyMessage}</p>
+        <div className="glass flex h-[min(85vw,340px)] w-[min(85vw,340px)] items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-foreground">
+          <p className="text-sm font-medium opacity-60">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -380,13 +380,13 @@ export function TrackCardStack({
         {error && (
           <div
             role="alert"
-            className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm text-white"
+            className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-red-500/90 px-6 py-3 text-sm font-medium text-white shadow-lg backdrop-blur-md md:bottom-8"
           >
             補充に失敗しました
             <button
               type="button"
               onClick={() => clearError()}
-              className="ml-2 text-white/80 hover:text-white"
+              className="ml-2 rounded-full p-1 hover:bg-white/20"
               aria-label="エラーを閉じる"
             >
               <X className="h-4 w-4" />
@@ -398,7 +398,7 @@ export function TrackCardStack({
         {!error && isRefilling && (
           <div
             role="status"
-            className="fixed bottom-4 right-4 rounded-full bg-black/80 px-4 py-2 text-sm text-white"
+            className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white shadow-lg backdrop-blur-md md:bottom-8"
           >
             楽曲を補充中...
           </div>
@@ -443,29 +443,29 @@ export function TrackCardStack({
       </div>
 
       {/* Like/Dislikeボタン - カードの外側（下）に配置 */}
-      <div className="flex items-center justify-center gap-8">
+      <div className="flex items-center justify-center gap-12">
         <button
           type="button"
           onClick={handleDislikeClick}
           disabled={actionInProgress}
-          className={`flex h-16 w-16 items-center justify-center rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-gray-200 hover:bg-gray-300 text-gray-800 ${
+          className={`group flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:scale-110 active:scale-90 ${
             actionInProgress ? "opacity-50 cursor-not-allowed" : ""
           }`}
           aria-label="よくない"
         >
-          <X className="h-8 w-8" />
+          <X className="h-10 w-10 transition-transform group-hover:rotate-90" />
         </button>
 
         <button
           type="button"
           onClick={handleLikeClick}
           disabled={actionInProgress}
-          className={`flex h-16 w-16 items-center justify-center rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 bg-blue-600 hover:bg-blue-700 text-white ${
+          className={`group flex h-20 w-20 items-center justify-center rounded-full border border-blue-500/30 bg-blue-600/20 text-blue-400 shadow-xl backdrop-blur-md transition-all duration-300 hover:bg-blue-600/30 hover:scale-110 active:scale-90 ${
             actionInProgress ? "opacity-50 cursor-not-allowed" : ""
           }`}
           aria-label="いいね"
         >
-          <Heart className="h-8 w-8 fill-current" />
+          <Heart className="h-10 w-10 transition-transform group-hover:scale-125 fill-current" />
         </button>
       </div>
     </div>

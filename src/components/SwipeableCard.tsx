@@ -270,18 +270,24 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           {showReaction && (
             <motion.div
               className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center"
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1.2 }}
-              exit={{ opacity: 0, scale: 1.5 }}
-              transition={{ duration: EXIT_DURATION_SEC }}
+              initial={{ opacity: 0, scale: 0.5, rotate: showReaction === "like" ? 15 : -15 }}
+              animate={{ opacity: 1, scale: 1.5, rotate: 0 }}
+              exit={{ opacity: 0, scale: 2, filter: "blur(10px)" }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+              <div className={`flex h-32 w-32 items-center justify-center rounded-full glass ${
+                showReaction === "like" ? "bg-red-500/20 border-red-500/50" : "bg-white/10 border-white/30"
+              }`}>
                 {showReaction === "like" ? (
-                  // いいねアイコン
-                  <Heart className="h-14 w-14 text-red-500 fill-current" aria-label="いいね" />
+                  <Heart
+                    className="h-16 w-16 text-red-500 fill-current drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                    aria-label="いいね"
+                  />
                 ) : (
-                  // スキップアイコン
-                  <X className="h-14 w-14 text-gray-400" aria-label="よくない" />
+                  <X
+                    className="h-16 w-16 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                    aria-label="よくない"
+                  />
                 )}
               </div>
             </motion.div>
@@ -299,18 +305,20 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           <button
             type="button"
             onClick={(e) => onPlayPause(e)}
-            className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10"
             aria-label={isPlaying ? "一時停止" : "再生"}
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-all hover:bg-black/70 active:scale-95">
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="flex h-20 w-20 items-center justify-center rounded-full glass bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
               {isPlaying ? (
-                // 停止アイコン
-                <Pause className="h-8 w-8 fill-current" aria-label="一時停止" />
+                <Pause className="h-10 w-10 fill-current" aria-label="一時停止" />
               ) : (
-                // 再生アイコン
-                <Play className="h-8 w-8 fill-current" aria-label="再生" />
+                <Play className="h-10 w-10 fill-current ml-1" aria-label="再生" />
               )}
-            </div>
+            </motion.div>
           </button>
         )}
       </motion.div>
