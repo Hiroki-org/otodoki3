@@ -25,11 +25,12 @@ export async function GET() {
         { id: 'dislikes', name: 'スキップ済み', icon: '🚫', count: dislikesCount.count ?? 0, is_default: true },
     ];
 
-    const customPlaylists = userPlaylists.data?.map(p => ({
+    type PlaylistRow = { id: string; title: string; playlist_tracks?: Array<{ count?: number }>; };
+    const customPlaylists = (userPlaylists.data as PlaylistRow[] | undefined)?.map(p => ({
         id: p.id,
         name: p.title,
         icon: '🎵',
-        count: (p.playlist_tracks as any)?.[0]?.count ?? 0,
+        count: p.playlist_tracks?.[0]?.count ?? 0,
         is_default: false
     })) ?? [];
 
