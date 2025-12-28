@@ -9,6 +9,7 @@ type AudioPlayerState = {
 
 export function useAudioPlayer() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
     const [state, setState] = useState<AudioPlayerState>({
         isPlaying: false,
         progress: 0,
@@ -74,6 +75,24 @@ export function useAudioPlayer() {
         },
         [stop]
     );
+
+    const preload = useCallback((previewUrl: string) => {
+        const trimmed = previewUrl.trim();
+        if (!trimmed) return;
+
+        if (!preloadAudioRef.current) {
+            preloadAudioRef.current = new Audio();
+        }
+
+        const audio = preloadAudioRef.current;
+        audio.preload = "auto";
+        audio.volume = 0;
+
+        if (audio.src !== trimmed) {
+            audio.src = trimmed;
+            audio.load();
+        }
+    }, []);
 
     useEffect(() => {
         if (audioRef.current) return;
@@ -143,11 +162,19 @@ export function useAudioPlayer() {
             audio.removeEventListener("play", handlePlay);
             audio.removeEventListener("pause", handlePause);
             audioRef.current = null;
+
+            const preloadAudio = preloadAudioRef.current;
+            if (preloadAudio) {
+                preloadAudio.pause();
+                preloadAudio.src = "";
+                preloadAudioRef.current = null;
+            }
         };
     }, [stop]);
 
     return {
         audioRef,
+        preload,
         play,
         stop,
         pause,
