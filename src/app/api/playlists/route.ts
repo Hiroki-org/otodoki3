@@ -29,7 +29,7 @@ export async function GET() {
         id: p.id,
         name: p.title,
         icon: '🎵',
-        // @ts-ignore: Supabase join count type inference
+        // @ts-expect-error: Supabase join count type inference
         count: p.playlist_tracks?.[0]?.count ?? 0,
         is_default: false
     })) ?? [];
