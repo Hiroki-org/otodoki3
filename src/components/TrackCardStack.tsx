@@ -2,6 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Heart, X, Music, Sparkles } from "lucide-react";
 
 import type { Track, CardItem } from "../types/track-pool";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
@@ -352,9 +353,15 @@ export function TrackCardStack({
 
   if (stack.length === 0) {
     const emptyMessage =
-      mode === "playlist"
-        ? "すべての曲を評価しました ✨"
-        : "今日のディスカバリーはここまで 🎵";
+      mode === "playlist" ? (
+        <span className="flex items-center gap-2">
+          すべての曲を評価しました <Sparkles className="h-4 w-4" />
+        </span>
+      ) : (
+        <span className="flex items-center gap-2">
+          今日のディスカバリーはここまで <Music className="h-4 w-4" />
+        </span>
+      );
 
     return (
       <div className="flex flex-col items-center gap-8">
@@ -382,7 +389,7 @@ export function TrackCardStack({
               className="ml-2 text-white/80 hover:text-white"
               aria-label="エラーを閉じる"
             >
-              ✕
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
@@ -446,18 +453,7 @@ export function TrackCardStack({
           }`}
           aria-label="よくない"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-8 w-8"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <X className="h-8 w-8" />
         </button>
 
         <button
@@ -469,14 +465,7 @@ export function TrackCardStack({
           }`}
           aria-label="いいね"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-8 w-8"
-          >
-            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-          </svg>
+          <Heart className="h-8 w-8 fill-current" />
         </button>
       </div>
     </div>

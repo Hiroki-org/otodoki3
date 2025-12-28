@@ -1,5 +1,7 @@
 "use client";
 
+import { Music, RefreshCw, ArrowLeft, ArrowRight } from "lucide-react";
+
 export function TutorialCard({
   mode = "discover",
 }: {
@@ -23,8 +25,14 @@ export function TutorialCard({
     >
       <div className="flex h-full flex-col items-center justify-center p-6 text-center">
         {/* ロゴ / アプリ名 */}
-        <div className="mb-8">
-          <div className="text-4xl">{isTutorial ? "🎵" : "♻️"}</div>
+        <div className="mb-8 flex flex-col items-center">
+          <div className="text-4xl">
+            {isTutorial ? (
+              <Music className="h-12 w-12" />
+            ) : (
+              <RefreshCw className="h-12 w-12" />
+            )}
+          </div>
           <h2 className="mt-3 text-2xl font-bold">{title}</h2>
           <p className="mt-1 text-sm opacity-90">{subtitle}</p>
         </div>
@@ -32,7 +40,7 @@ export function TutorialCard({
         {/* スワイプガイド */}
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <span className="text-2xl">👈</span>
+            <ArrowLeft className="h-8 w-8" />
             <div className="text-left">
               <p className="font-semibold">左スワイプ</p>
               <p className="text-sm opacity-90">{leftText}</p>
@@ -40,7 +48,7 @@ export function TutorialCard({
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-2xl">👉</span>
+            <ArrowRight className="h-8 w-8" />
             <div className="text-left">
               <p className="font-semibold">右スワイプ</p>
               <p className="text-sm opacity-90">{rightText}</p>

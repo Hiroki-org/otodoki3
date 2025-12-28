@@ -1,6 +1,7 @@
 import type { Track } from "../types/track-pool";
 import Image from "next/image";
 import { AudioProgressBar } from "./AudioProgressBar";
+import { Music } from "lucide-react";
 
 function isValidArtworkUrl(url: string | undefined): url is string {
   if (!url) return false;
@@ -47,7 +48,7 @@ export function TrackCard({ track, progress }: TrackCardProps) {
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
           >
-            <span className="text-4xl opacity-20">🎵</span>
+            <Music className="h-12 w-12 opacity-20" />
           </div>
         )}
 
