@@ -26,14 +26,32 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { track_id } = body;
+    let { track_id } = body;
 
-    if (!track_id) {
-        return NextResponse.json({ error: 'Track ID is required' }, { status: 400 });
+    // track_idをnumberに変換
+    if (typeof track_id === 'string') {
+        track_id = parseInt(track_id, 10);
+    }
+
+    console.log('[POST /api/playlists/[id]/tracks] Request:', {
+        playlistId: id,
+        trackId: track_id,
+        trackIdType: typeof track_id
+    });
+
+    if (!track_id || isNaN(track_id)) {
+        return NextResponse.json({ error: 'Track ID is required and must be a number' }, { status: 400 });
     }
 
     // Verify playlist ownership
     const { playlist, error: playlistError } = await verifyPlaylistOwnership(supabase, id, user.id);
+
+    console.log('[POST /api/playlists/[id]/tracks] Playlist verification:', {
+        playlistId: id,
+        userId: user.id,
+        found: !!playlist,
+        error: playlistError?.message
+    });
 
     if (playlistError || !playlist) {
         return NextResponse.json({ error: 'Playlist not found' }, { status: 404 });
@@ -66,7 +84,17 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to add track' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // Get the track info to return in response
+    const { data: trackData } = await supabase
+        .from('track_pool')
+        .select('track_id, track_name, artist_name, artwork_url, preview_url')
+        .eq('track_id', track_id)
+        .single();
+
+    return NextResponse.json({
+        success: true,
+        track: trackData
+    });
 }
 
 export async function DELETE(
@@ -82,10 +110,15 @@ export async function DELETE(
     }
 
     const body = await request.json();
-    const { track_id } = body;
+    let { track_id } = body;
 
-    if (!track_id) {
-        return NextResponse.json({ error: 'Track ID is required' }, { status: 400 });
+    // track_idをnumberに変換
+    if (typeof track_id === 'string') {
+        track_id = parseInt(track_id, 10);
+    }
+
+    if (!track_id || isNaN(track_id)) {
+        return NextResponse.json({ error: 'Track ID is required and must be a number' }, { status: 400 });
     }
 
     // Verify playlist ownership
@@ -121,10 +154,22 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { tracks } = body; // Expecting array of track_ids in the new order
+    let { tracks } = body; // Expecting array of track_ids in the new order
 
     if (!tracks || !Array.isArray(tracks)) {
         return NextResponse.json({ error: 'Tracks array is required' }, { status: 400 });
+    }
+
+    // Convert all track_ids to numbers
+    const numericTracks = tracks.map(trackId => {
+        if (typeof trackId === 'string') {
+            return parseInt(trackId, 10);
+        }
+        return trackId;
+    });
+
+    if (numericTracks.some(id => !id || isNaN(id))) {
+        return NextResponse.json({ error: 'All track IDs must be valid numbers' }, { status: 400 });
     }
 
     // Verify playlist ownership
@@ -135,7 +180,7 @@ export async function PATCH(
     }
 
     // Update positions
-    const updates = tracks.map((trackId, index) =>
+    const updates = numericTracks.map((trackId, index) =>
         supabase
             .from('playlist_tracks')
             .update({ position: index })

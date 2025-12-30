@@ -1,14 +1,23 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Ban, ChevronLeft, Play, Pause, Music } from "lucide-react";
+import {
+  Heart,
+  Ban,
+  ChevronLeft,
+  Play,
+  Pause,
+  Music,
+  Plus,
+} from "lucide-react";
 
 import { Layout } from "@/components/Layout";
+import { SelectTrackModal } from "@/components/SelectTrackModal";
 
 type Track = {
-  track_id: string;
+  track_id: number;
   type: "track";
   track_name: string;
   artist_name: string;
@@ -16,24 +25,23 @@ type Track = {
   preview_url: string;
 };
 
+type PlaylistInfo = {
+  name: string;
+  icon: React.ReactNode;
+};
+
 export default function PlaylistDetailPage() {
   const { id } = useParams();
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
-  const playlistMeta =
-    id === "likes"
-      ? {
-          name: "お気に入り",
-          icon: <Heart className="h-6 w-6 text-red-500 fill-current" />,
-        }
-      : {
-          name: "スキップ済み",
-          icon: <Ban className="h-6 w-6 text-zinc-400" />,
-        };
+  // デフォルトプレイリスト（likes, dislikes）以外の場合、追加ボタンを表示
+  const canAddTracks = id !== "likes" && id !== "dislikes";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,6 +73,25 @@ export default function PlaylistDetailPage() {
         }
 
         setTracks(responseData.tracks || []);
+
+        // プレイリスト情報を設定
+        if (id === "likes") {
+          setPlaylistInfo({
+            name: "お気に入り",
+            icon: <Heart className="h-6 w-6 text-red-500 fill-current" />,
+          });
+        } else if (id === "dislikes") {
+          setPlaylistInfo({
+            name: "スキップ済み",
+            icon: <Ban className="h-6 w-6 text-zinc-400" />,
+          });
+        } else if (responseData.playlist) {
+          // カスタムプレイリストの場合
+          setPlaylistInfo({
+            name: responseData.playlist.title,
+            icon: <Music className="h-6 w-6 text-zinc-400" />,
+          });
+        }
       } catch (err) {
         console.error("Network error:", err);
       } finally {
@@ -106,7 +133,7 @@ export default function PlaylistDetailPage() {
     }
   };
 
-  if (loading)
+  if (loading || !playlistInfo)
     return (
       <Layout>
         <div className="bg-black text-white flex items-center justify-center">
@@ -129,14 +156,25 @@ export default function PlaylistDetailPage() {
               >
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900">
-                  {playlistMeta.icon}
+                  {playlistInfo.icon}
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight">
-                  {playlistMeta.name}
+                  {playlistInfo.name}
                 </h1>
               </div>
+              {/* 曲を追加ボタン（カスタムプレイリストのみ） */}
+              {canAddTracks && (
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black hover:bg-zinc-200 transition-all active:scale-90"
+                  aria-label="曲を追加"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             <Link
@@ -166,7 +204,7 @@ export default function PlaylistDetailPage() {
                       : "hover:bg-white/5"
                   }`}
                 >
-                  <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-900">
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-900">
                     <Image
                       src={track.artwork_url}
                       alt={track.track_name}
@@ -202,6 +240,22 @@ export default function PlaylistDetailPage() {
             </div>
           )}
         </div>
+
+        {/* 曲選択モーダル */}
+        {canAddTracks && (
+          <SelectTrackModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            playlistId={id as string}
+            existingTrackIds={new Set(tracks.map((t) => t.track_id))}
+            onSuccess={(addedTrack) => {
+              // 追加された曲を曲一覧に追加（リロードなし）
+              if (addedTrack) {
+                setTracks((prev) => [...prev, addedTrack]);
+              }
+            }}
+          />
+        )}
       </div>
     </Layout>
   );
