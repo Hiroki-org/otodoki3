@@ -43,9 +43,9 @@ export function SelectTrackModal({
       fetchLikesTracks();
       // existingTrackIdsをinitial stateとして設定
       // 毎回モーダルを開く時に existingTrackIds を反映
-      setAddedTracks(
-        new Set(Array.from(existingTrackIds, (id) => Number(id)))
-      );
+      setAddedTracks(new Set(Array.from(existingTrackIds, (id) => Number(id))));
+      // トーストをリセット
+      setToast(null);
     }
   }, [isOpen, existingTrackIds]);
 
@@ -176,7 +176,7 @@ export function SelectTrackModal({
                         !isAlreadyInPlaylist && handleAddTrack(trackId)
                       }
                       disabled={isAlreadyInPlaylist || isAdding}
-                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
+                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all overflow-hidden ${
                         isAlreadyInPlaylist
                           ? "bg-green-500/10 cursor-default"
                           : "bg-zinc-800/50 hover:bg-zinc-800 active:scale-[0.98]"

@@ -49,61 +49,62 @@ export default function PlaylistDetailPage() {
     [tracks]
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`/api/playlists/${id}`);
+  const fetchData = async () => {
+    try {
+      const res = await fetch(`/api/playlists/${id}`);
 
-        if (process.env.NODE_ENV === "development") {
-          console.log("=== Playlist Detail Fetch ===");
-          console.log("Status:", res.status);
-          console.log("OK:", res.ok);
-        }
-
-        if (res.status === 401 || res.status === 403) {
-          router.push("/login");
-          return;
-        }
-        if (!res.ok) {
-          console.error("Fetch error:", res.status);
-          setLoading(false);
-          return;
-        }
-
-        const responseData = await res.json();
-
-        if (process.env.NODE_ENV === "development") {
-          console.log("Response data:", responseData);
-          console.log("Tracks:", responseData.tracks);
-          console.log("Tracks length:", responseData.tracks?.length);
-        }
-
-        setTracks(responseData.tracks || []);
-
-        // プレイリスト情報を設定
-        if (id === "likes") {
-          setPlaylistInfo({
-            name: "お気に入り",
-            icon: <Heart className="h-6 w-6 text-red-500 fill-current" />,
-          });
-        } else if (id === "dislikes") {
-          setPlaylistInfo({
-            name: "スキップ済み",
-            icon: <Ban className="h-6 w-6 text-zinc-400" />,
-          });
-        } else if (responseData.playlist) {
-          // カスタムプレイリストの場合
-          setPlaylistInfo({
-            name: responseData.playlist.title,
-            icon: <Music className="h-6 w-6 text-zinc-400" />,
-          });
-        }
-      } catch (err) {
-        console.error("Network error:", err);
-      } finally {
-        setLoading(false);
+      if (process.env.NODE_ENV === "development") {
+        console.log("=== Playlist Detail Fetch ===");
+        console.log("Status:", res.status);
+        console.log("OK:", res.ok);
       }
-    };
+
+      if (res.status === 401 || res.status === 403) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        console.error("Fetch error:", res.status);
+        setLoading(false);
+        return;
+      }
+
+      const responseData = await res.json();
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("Response data:", responseData);
+        console.log("Tracks:", responseData.tracks);
+        console.log("Tracks length:", responseData.tracks?.length);
+      }
+
+      setTracks(responseData.tracks || []);
+
+      // プレイリスト情報を設定
+      if (id === "likes") {
+        setPlaylistInfo({
+          name: "お気に入り",
+          icon: <Heart className="h-6 w-6 text-red-500 fill-current" />,
+        });
+      } else if (id === "dislikes") {
+        setPlaylistInfo({
+          name: "スキップ済み",
+          icon: <Ban className="h-6 w-6 text-zinc-400" />,
+        });
+      } else if (responseData.playlist) {
+        // カスタムプレイリストの場合
+        setPlaylistInfo({
+          name: responseData.playlist.title,
+          icon: <Music className="h-6 w-6 text-zinc-400" />,
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching playlist:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
 
     // ページ離脱時に音声を停止とリスナーをクリア
@@ -251,15 +252,13 @@ export default function PlaylistDetailPage() {
         {canAddTracks && (
           <SelectTrackModal
             isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => {
+              setIsModalOpen(false);
+              // モーダルを閉じる時にリフレッチ
+              fetchData();
+            }}
             playlistId={id as string}
             existingTrackIds={existingTrackIds}
-            onSuccess={(addedTrack) => {
-              // 追加された曲を曲一覧に追加（リロードなし）
-              if (addedTrack) {
-                setTracks((prev) => [...prev, addedTrack]);
-              }
-            }}
           />
         )}
       </div>
