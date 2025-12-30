@@ -41,9 +41,12 @@ export default async function MyPage() {
   ]);
 
   // Log query errors for observability
-  if (likesResult.error) console.error("Failed to fetch likes:", likesResult.error);
-  if (dislikesResult.error) console.error("Failed to fetch dislikes:", dislikesResult.error);
-  if (playlistsResult.error) console.error("Failed to fetch playlists:", playlistsResult.error);
+  if (likesResult.error)
+    console.error("Failed to fetch likes:", likesResult.error);
+  if (dislikesResult.error)
+    console.error("Failed to fetch dislikes:", dislikesResult.error);
+  if (playlistsResult.error)
+    console.error("Failed to fetch playlists:", playlistsResult.error);
 
   const likesCount = likesResult.count ?? 0;
   const dislikesCount = dislikesResult.count ?? 0;
