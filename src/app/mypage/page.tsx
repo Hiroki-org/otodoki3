@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Layout } from "@/components/Layout";
 import { LogoutButton } from "./LogoutButton";
+import { redirect } from "next/navigation";
 import {
   User,
   Heart,
@@ -17,20 +18,32 @@ export default async function MyPage() {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  // Fetch stats
-  const { count: likesCount } = await supabase
-    .from("likes")
-    .select("*", { count: "exact", head: true });
+  if (authError || !user) {
+    redirect("/login");
+  }
 
-  const { count: dislikesCount } = await supabase
-    .from("dislikes")
-    .select("*", { count: "exact", head: true });
+  // Fetch stats in parallel
+  const [likesResult, dislikesResult, playlistsResult] = await Promise.all([
+    supabase
+      .from("likes")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id),
+    supabase
+      .from("dislikes")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id),
+    supabase
+      .from("playlists")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id),
+  ]);
 
-  const { count: playlistsCount } = await supabase
-    .from("playlists")
-    .select("*", { count: "exact", head: true });
+  const likesCount = likesResult.count ?? 0;
+  const dislikesCount = dislikesResult.count ?? 0;
+  const playlistsCount = playlistsResult.count ?? 0;
 
   return (
     <Layout>
