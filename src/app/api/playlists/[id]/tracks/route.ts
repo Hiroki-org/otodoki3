@@ -2,6 +2,17 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+function parseTrackId(value: unknown): number | null {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === 'string') {
+        const parsed = parseInt(value, 10);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
 async function verifyPlaylistOwnership(supabase: SupabaseClient, playlistId: string, userId: string) {
     const { data: playlist, error } = await supabase
         .from('playlists')
@@ -26,32 +37,14 @@ export async function POST(
     }
 
     const body = await request.json();
-    let { track_id } = body;
+    const trackId = parseTrackId(body?.track_id);
 
-    // track_idをnumberに変換
-    if (typeof track_id === 'string') {
-        track_id = parseInt(track_id, 10);
-    }
-
-    console.log('[POST /api/playlists/[id]/tracks] Request:', {
-        playlistId: id,
-        trackId: track_id,
-        trackIdType: typeof track_id
-    });
-
-    if (!track_id || isNaN(track_id)) {
+    if (trackId == null) {
         return NextResponse.json({ error: 'Track ID is required and must be a number' }, { status: 400 });
     }
 
     // Verify playlist ownership
     const { playlist, error: playlistError } = await verifyPlaylistOwnership(supabase, id, user.id);
-
-    console.log('[POST /api/playlists/[id]/tracks] Playlist verification:', {
-        playlistId: id,
-        userId: user.id,
-        found: !!playlist,
-        error: playlistError?.message
-    });
 
     if (playlistError || !playlist) {
         return NextResponse.json({ error: 'Playlist not found' }, { status: 404 });
@@ -72,7 +65,7 @@ export async function POST(
         .from('playlist_tracks')
         .insert({
             playlist_id: id,
-            track_id,
+            track_id: trackId,
             position: nextPosition,
         });
 
@@ -88,7 +81,7 @@ export async function POST(
     const { data: trackData } = await supabase
         .from('track_pool')
         .select('track_id, track_name, artist_name, artwork_url, preview_url')
-        .eq('track_id', track_id)
+        .eq('track_id', trackId)
         .single();
 
     return NextResponse.json({
@@ -110,14 +103,9 @@ export async function DELETE(
     }
 
     const body = await request.json();
-    let { track_id } = body;
+    const trackId = parseTrackId(body?.track_id);
 
-    // track_idをnumberに変換
-    if (typeof track_id === 'string') {
-        track_id = parseInt(track_id, 10);
-    }
-
-    if (!track_id || isNaN(track_id)) {
+    if (trackId == null) {
         return NextResponse.json({ error: 'Track ID is required and must be a number' }, { status: 400 });
     }
 
@@ -132,7 +120,7 @@ export async function DELETE(
         .from('playlist_tracks')
         .delete()
         .eq('playlist_id', id)
-        .eq('track_id', track_id);
+        .eq('track_id', trackId);
 
     if (error) {
         return NextResponse.json({ error: 'Failed to remove track' }, { status: 500 });
@@ -154,21 +142,19 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    let { tracks } = body; // Expecting array of track_ids in the new order
+    const { tracks } = body; // Expecting array of track_ids in the new order
 
     if (!tracks || !Array.isArray(tracks)) {
         return NextResponse.json({ error: 'Tracks array is required' }, { status: 400 });
     }
 
     // Convert all track_ids to numbers
-    const numericTracks = tracks.map(trackId => {
-        if (typeof trackId === 'string') {
-            return parseInt(trackId, 10);
-        }
-        return trackId;
+    const numericTracks: number[] = tracks.map((trackId: unknown) => {
+        const parsed = parseTrackId(trackId);
+        return parsed ?? NaN;
     });
 
-    if (numericTracks.some(id => !id || isNaN(id))) {
+    if (numericTracks.some((trackId) => !Number.isFinite(trackId))) {
         return NextResponse.json({ error: 'All track IDs must be valid numbers' }, { status: 400 });
     }
 

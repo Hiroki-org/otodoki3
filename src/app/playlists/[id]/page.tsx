@@ -35,7 +35,7 @@ export default function PlaylistDetailPage() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
@@ -49,15 +49,9 @@ export default function PlaylistDetailPage() {
     [tracks]
   );
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/playlists/${id}`);
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("=== Playlist Detail Fetch ===");
-        console.log("Status:", res.status);
-        console.log("OK:", res.ok);
-      }
 
       if (res.status === 401 || res.status === 403) {
         router.push("/login");
@@ -70,12 +64,6 @@ export default function PlaylistDetailPage() {
       }
 
       const responseData = await res.json();
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("Response data:", responseData);
-        console.log("Tracks:", responseData.tracks);
-        console.log("Tracks length:", responseData.tracks?.length);
-      }
 
       setTracks(responseData.tracks || []);
 
@@ -102,7 +90,7 @@ export default function PlaylistDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]);
 
   useEffect(() => {
     fetchData();
@@ -116,7 +104,7 @@ export default function PlaylistDetailPage() {
         audioRef.current = null;
       }
     };
-  }, [id, router]);
+  }, [fetchData]);
 
   const handlePlay = (track: Track) => {
     if (playingId === track.track_id) {
@@ -254,11 +242,17 @@ export default function PlaylistDetailPage() {
             isOpen={isModalOpen}
             onClose={() => {
               setIsModalOpen(false);
-              // モーダルを閉じる時にリフレッチ
-              fetchData();
             }}
             playlistId={id as string}
             existingTrackIds={existingTrackIds}
+            onSuccess={(track) => {
+              if (!track) return;
+              setTracks((prev) =>
+                prev.some((t) => t.track_id === track.track_id)
+                  ? prev
+                  : [...prev, track]
+              );
+            }}
           />
         )}
       </div>

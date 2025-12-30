@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Music, ChevronRight } from "lucide-react";
 import { Toast } from "./Toast";
 
@@ -32,12 +32,22 @@ export function AddToPlaylistModal({
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchPlaylists();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current != null) {
+        window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,9 +102,13 @@ export function AddToPlaylistModal({
           type: "success",
         });
         onSuccess?.();
-        setTimeout(() => {
+        if (closeTimerRef.current != null) {
+          window.clearTimeout(closeTimerRef.current);
+        }
+        closeTimerRef.current = window.setTimeout(() => {
           onClose();
           setToast(null);
+          closeTimerRef.current = null;
         }, 1500);
       } else if (res.status === 409) {
         setToast({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -19,14 +19,20 @@ export function Toast({
   onClose,
   duration = 3000,
 }: ToastProps) {
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
-        onClose();
+        onCloseRef.current();
       }, duration);
       return () => clearTimeout(timer);
     }
-  }, [isVisible, duration, onClose]);
+  }, [isVisible, duration]);
 
   const Icon = type === "success" ? CheckCircle2 : XCircle;
   const bgColor = type === "success" ? "bg-green-500/90" : "bg-red-500/90";

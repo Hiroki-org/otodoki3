@@ -43,7 +43,7 @@ export function SelectTrackModal({
       fetchLikesTracks();
       // existingTrackIdsをinitial stateとして設定
       // 毎回モーダルを開く時に existingTrackIds を反映
-      setAddedTracks(new Set(Array.from(existingTrackIds, (id) => Number(id))));
+      setAddedTracks(new Set(existingTrackIds));
       // トーストをリセット
       setToast(null);
     }
@@ -99,7 +99,7 @@ export function SelectTrackModal({
         setAddedTracks((prev) => new Set([...prev, trackId]));
         // API レスポンスから track 情報を取得、なければ local state から取得
         const trackToReturn =
-          data.track || tracks.find((t) => Number(t.track_id) === trackId);
+          data.track || tracks.find((t) => t.track_id === trackId);
         // 親に即通知（リロードなし）
         onSuccess?.(trackToReturn);
         // トーストは最後に表示（スクロール位置維持）
@@ -164,7 +164,7 @@ export function SelectTrackModal({
             ) : (
               <div className="grid gap-2">
                 {tracks.map((track) => {
-                  const trackId = Number(track.track_id);
+                  const trackId = track.track_id;
                   const isAlreadyInPlaylist = addedTracks.has(trackId);
                   const isAdding = adding === trackId;
 
@@ -176,7 +176,7 @@ export function SelectTrackModal({
                         !isAlreadyInPlaylist && handleAddTrack(trackId)
                       }
                       disabled={isAlreadyInPlaylist || isAdding}
-                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all overflow-hidden ${
+                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
                         isAlreadyInPlaylist
                           ? "bg-green-500/10 cursor-default"
                           : "bg-zinc-800/50 hover:bg-zinc-800 active:scale-[0.98]"

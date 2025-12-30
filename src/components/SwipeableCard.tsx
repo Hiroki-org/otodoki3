@@ -316,11 +316,6 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log("[SwipeableCard] Plus button clicked", {
-                    trackId: item.track_id,
-                    trackType: item.type,
-                    isModalOpen,
-                  });
                   setIsModalOpen(true);
                 }}
                 className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition-all hover:bg-black/60 hover:scale-110 active:scale-95"
