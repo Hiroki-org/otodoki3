@@ -38,21 +38,13 @@ export function SelectTrackModal({
     type: "success" | "error";
   } | null>(null);
 
-  // 配列をSetに変換（存在チェック用）
-  const existingTrackIdsSet = new Set(existingTrackIds);
-
   useEffect(() => {
     if (isOpen) {
       fetchLikesTracks();
       // existingTrackIdsをinitial stateとして設定
       // 毎回モーダルを開く時に existingTrackIds を反映
-      setAddedTracks(new Set(existingTrackIds));
-      console.log(
-        "[SelectTrackModal] Modal opened:",
-        "existingTrackIds:",
-        existingTrackIds,
-        "Length:",
-        existingTrackIds.length
+      setAddedTracks(
+        new Set(Array.from(existingTrackIds, (id) => Number(id)))
       );
     }
   }, [isOpen, existingTrackIds]);
@@ -87,10 +79,10 @@ export function SelectTrackModal({
   };
 
   const handleAddTrack = async (trackId: number) => {
-    console.log("[SelectTrackModal] Adding track:", trackId, {
-      existingTrackIds: Array.from(existingTrackIds),
-      isExisting: existingTrackIds.has(trackId),
-    });
+    if (addedTracks.has(trackId)) {
+      return;
+    }
+
     setAdding(trackId);
     try {
       const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
@@ -103,15 +95,18 @@ export function SelectTrackModal({
 
       if (res.ok) {
         const data = await res.json();
+        // 楽観的更新：即座に addedTracks に反映
+        setAddedTracks((prev) => new Set([...prev, trackId]));
+        // API レスポンスから track 情報を取得、なければ local state から取得
+        const trackToReturn =
+          data.track || tracks.find((t) => Number(t.track_id) === trackId);
+        // 親に即通知（リロードなし）
+        onSuccess?.(trackToReturn);
+        // トーストは最後に表示（スクロール位置維持）
         setToast({
           message: "曲を追加しました",
           type: "success",
         });
-        setAddedTracks((prev) => new Set([...prev, trackId]));
-        // API レスポンスから track 情報を取得、なければ local state から取得
-        const trackToReturn =
-          data.track || tracks.find((t) => t.track_id === trackId);
-        onSuccess?.(trackToReturn);
       } else if (res.status === 409) {
         setToast({
           message: "既にこのプレイリストに追加されています",
@@ -169,32 +164,19 @@ export function SelectTrackModal({
             ) : (
               <div className="grid gap-2">
                 {tracks.map((track) => {
-                  const isExisting = existingTrackIdsSet.has(track.track_id);
-                  const isAdded = addedTracks.has(track.track_id);
-                  const isAlreadyInPlaylist = isExisting || isAdded;
-                  const isAdding = adding === track.track_id;
-
-                  // 初回のみログ出力（デバッグ用）
-                  if (!isAlreadyInPlaylist && track.track_id === 1751409888) {
-                    console.log(`[SelectTrackModal] Track ${track.track_id}:`, {
-                      existingTrackIdsType:
-                        existingTrackIds instanceof Set ? "Set" : "Array",
-                      hasMethod: typeof existingTrackIds.has === "function",
-                      isExisting,
-                      isAdded,
-                      isAlreadyInPlaylist,
-                    });
-                  }
+                  const trackId = Number(track.track_id);
+                  const isAlreadyInPlaylist = addedTracks.has(trackId);
+                  const isAdding = adding === trackId;
 
                   return (
                     <button
                       key={track.track_id}
                       type="button"
                       onClick={() =>
-                        !isAlreadyInPlaylist && handleAddTrack(track.track_id)
+                        !isAlreadyInPlaylist && handleAddTrack(trackId)
                       }
                       disabled={isAlreadyInPlaylist || isAdding}
-                      className={`group flex items-center gap-4 p-3 rounded-xl transition-all ${
+                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
                         isAlreadyInPlaylist
                           ? "bg-green-500/10 cursor-default"
                           : "bg-zinc-800/50 hover:bg-zinc-800 active:scale-[0.98]"
@@ -209,7 +191,7 @@ export function SelectTrackModal({
                           unoptimized
                         />
                       </div>
-                      <div className="flex-1 text-left min-w-0 px-1">
+                      <div className="flex-1 text-left min-w-0">
                         <p className="font-medium truncate text-white text-sm">
                           {track.track_name}
                         </p>
