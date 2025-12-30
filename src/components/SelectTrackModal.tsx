@@ -49,10 +49,8 @@ export function SelectTrackModal({
       setAddedTracks(new Set(existingTrackIds));
       console.log(
         "[SelectTrackModal] Modal opened:",
-        "Values:", existingTrackIds,
-        "Size:", existingTrackIds.length
-        "Values:", Array.from(idSet),
-        "Size:", idSet.size
+        "existingTrackIds:", existingTrackIds,
+        "Length:", existingTrackIds.length
       );
     }
   }, [isOpen, existingTrackIds]);
@@ -169,7 +167,7 @@ export function SelectTrackModal({
             ) : (
               <div className="grid gap-2">
                 {tracks.map((track) => {
-                  const isExisting = existingTrackIds.has(track.track_id);
+                  const isExisting = existingTrackIdsSet.has(track.track_id);
                   const isAdded = addedTracks.has(track.track_id);
                   const isAlreadyInPlaylist = isExisting || isAdded;
                   const isAdding = adding === track.track_id;
