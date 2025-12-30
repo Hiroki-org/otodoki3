@@ -18,7 +18,7 @@ interface SelectTrackModalProps {
   isOpen: boolean;
   onClose: () => void;
   playlistId: string;
-  existingTrackIds?: Set<number>;
+  existingTrackIds?: number[];
   onSuccess?: (track?: Track) => void;
 }
 
@@ -26,7 +26,7 @@ export function SelectTrackModal({
   isOpen,
   onClose,
   playlistId,
-  existingTrackIds = new Set(),
+  existingTrackIds = [],
   onSuccess,
 }: SelectTrackModalProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -38,6 +38,9 @@ export function SelectTrackModal({
     type: "success" | "error";
   } | null>(null);
 
+  // 配列をSetに変換（存在チェック用）
+  const existingTrackIdsSet = new Set(existingTrackIds);
+
   useEffect(() => {
     if (isOpen) {
       fetchLikesTracks();
@@ -45,8 +48,11 @@ export function SelectTrackModal({
       // 毎回モーダルを開く時に existingTrackIds を反映
       setAddedTracks(new Set(existingTrackIds));
       console.log(
-        "[SelectTrackModal] Modal opened, existingTrackIds:",
-        Array.from(existingTrackIds)
+        "[SelectTrackModal] Modal opened:",
+        "Values:", existingTrackIds,
+        "Size:", existingTrackIds.length
+        "Values:", Array.from(idSet),
+        "Size:", idSet.size
       );
     }
   }, [isOpen, existingTrackIds]);
@@ -167,6 +173,20 @@ export function SelectTrackModal({
                   const isAdded = addedTracks.has(track.track_id);
                   const isAlreadyInPlaylist = isExisting || isAdded;
                   const isAdding = adding === track.track_id;
+
+                  // 初回のみログ出力（デバッグ用）
+                  if (!isAlreadyInPlaylist && track.track_id === 1751409888) {
+                    console.log(
+                      `[SelectTrackModal] Track ${track.track_id}:`,
+                      {
+                        existingTrackIdsType: existingTrackIds instanceof Set ? "Set" : "Array",
+                        hasMethod: typeof existingTrackIds.has === "function",
+                        isExisting,
+                        isAdded,
+                        isAlreadyInPlaylist
+                      }
+                    );
+                  }
 
                   return (
                     <button

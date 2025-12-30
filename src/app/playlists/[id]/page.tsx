@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -42,6 +42,12 @@ export default function PlaylistDetailPage() {
 
   // デフォルトプレイリスト（likes, dislikes）以外の場合、追加ボタンを表示
   const canAddTracks = id !== "likes" && id !== "dislikes";
+  
+  // existingTrackIdsをトップレベルで計算
+  const existingTrackIds = useMemo(
+    () => new Set(tracks.map((t) => t.track_id)),
+    [tracks]
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -247,7 +253,7 @@ export default function PlaylistDetailPage() {
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             playlistId={id as string}
-            existingTrackIds={new Set(tracks.map((t) => t.track_id))}
+            existingTrackIds={existingTrackIds}
             onSuccess={(addedTrack) => {
               // 追加された曲を曲一覧に追加（リロードなし）
               if (addedTrack) {
