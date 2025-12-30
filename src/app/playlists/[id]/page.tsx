@@ -45,7 +45,7 @@ export default function PlaylistDetailPage() {
 
   // existingTrackIdsをトップレベルで計算
   const existingTrackIds = useMemo(
-    () => new Set(tracks.map((t) => t.track_id)),
+    () => Array.from(new Set(tracks.map((t) => t.track_id))),
     [tracks]
   );
 

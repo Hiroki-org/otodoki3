@@ -49,8 +49,10 @@ export function SelectTrackModal({
       setAddedTracks(new Set(existingTrackIds));
       console.log(
         "[SelectTrackModal] Modal opened:",
-        "existingTrackIds:", existingTrackIds,
-        "Length:", existingTrackIds.length
+        "existingTrackIds:",
+        existingTrackIds,
+        "Length:",
+        existingTrackIds.length
       );
     }
   }, [isOpen, existingTrackIds]);
@@ -174,16 +176,14 @@ export function SelectTrackModal({
 
                   // 初回のみログ出力（デバッグ用）
                   if (!isAlreadyInPlaylist && track.track_id === 1751409888) {
-                    console.log(
-                      `[SelectTrackModal] Track ${track.track_id}:`,
-                      {
-                        existingTrackIdsType: existingTrackIds instanceof Set ? "Set" : "Array",
-                        hasMethod: typeof existingTrackIds.has === "function",
-                        isExisting,
-                        isAdded,
-                        isAlreadyInPlaylist
-                      }
-                    );
+                    console.log(`[SelectTrackModal] Track ${track.track_id}:`, {
+                      existingTrackIdsType:
+                        existingTrackIds instanceof Set ? "Set" : "Array",
+                      hasMethod: typeof existingTrackIds.has === "function",
+                      isExisting,
+                      isAdded,
+                      isAlreadyInPlaylist,
+                    });
                   }
 
                   return (
