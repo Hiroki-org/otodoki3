@@ -36,12 +36,7 @@ export default function PlaylistsPage() {
   const [creating, setCreating] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const {
-    data: playlists = [],
-    isLoading,
-    isFetching,
-    error,
-  } = usePlaylists();
+  const { data: playlists = [], isLoading, isFetching, error } = usePlaylists();
 
   useEffect(() => {
     const status = (error as { status?: number } | null)?.status;
