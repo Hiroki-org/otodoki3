@@ -8,33 +8,42 @@ vi.mock('@/lib/supabase/server', () => ({
     createClient: vi.fn(),
 }));
 
+vi.mock('@/lib/supabase/admin', () => ({
+    createAdminClient: vi.fn(),
+}));
+
 const { createClient } = await import('@/lib/supabase/server');
+const { createAdminClient } = await import('@/lib/supabase/admin');
 
 describe('GET /api/tracks/random', () => {
-    let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+    let mockUserSupabase: ReturnType<typeof createMockSupabaseClient>;
+    let mockAdminSupabase: ReturnType<typeof createMockSupabaseClient>;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mockSupabase = createMockSupabaseClient();
+        mockUserSupabase = createMockSupabaseClient();
+        mockAdminSupabase = createMockSupabaseClient();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
+        vi.mocked(createClient).mockResolvedValue(mockUserSupabase as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vi.mocked(createAdminClient).mockReturnValue(mockAdminSupabase as any);
     });
 
     describe('正常系', () => {
         it('認証済みユーザーがランダムなトラックを取得できる', async () => {
             // Mock authenticated user
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: mockAuthenticatedUser },
                 error: null,
             });
 
             // Mock empty dislikes and likes (no filtering)
-            mockSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null }); // dislikes
-            mockSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null }); // likes
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null }); // dislikes
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null }); // likes
 
-            // Mock track pool data
-            mockSupabase.mockLimit.mockResolvedValue({
-                data: mockTrackPoolData,
+            // Mock RPC response for get_random_tracks
+            mockAdminSupabase.mockRpc.mockResolvedValue({
+                data: mockTrackPoolData.slice(0, 2),
                 error: null,
             });
 
@@ -52,13 +61,13 @@ describe('GET /api/tracks/random', () => {
 
         it('未認証ユーザーもトラックを取得できる', async () => {
             // Mock unauthenticated user
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: new Error('Not authenticated'),
             });
 
-            // Mock track pool data (no filtering for unauthenticated users)
-            mockSupabase.mockLimit.mockResolvedValue({
+            // Mock RPC response for get_random_tracks
+            mockAdminSupabase.mockRpc.mockResolvedValue({
                 data: mockTrackPoolData,
                 error: null,
             });
@@ -74,7 +83,7 @@ describe('GET /api/tracks/random', () => {
         });
 
         it('count パラメータを指定してトラック数を制御できる', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: null,
             });
@@ -87,8 +96,9 @@ describe('GET /api/tracks/random', () => {
                 preview_url: `https://example.com/preview${i + 1}.mp3`,
             }));
 
-            mockSupabase.mockLimit.mockResolvedValue({
-                data: manyTracks,
+            // Mock RPC response for get_random_tracks with count=25
+            mockAdminSupabase.mockRpc.mockResolvedValue({
+                data: manyTracks.slice(0, 25),
                 error: null,
             });
 
@@ -101,23 +111,26 @@ describe('GET /api/tracks/random', () => {
         });
 
         it('count が範囲外の場合は適切に制限される（最小1、最大100）', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: null,
             });
 
-            mockSupabase.mockLimit.mockResolvedValue({
-                data: mockTrackPoolData,
+            // Test count=0 (should default to 1)
+            mockAdminSupabase.mockRpc.mockResolvedValueOnce({
+                data: mockTrackPoolData.slice(0, 1),
                 error: null,
             });
-
-            // Test count=0 (should default to 1)
             const request1 = new NextRequest('http://localhost:3000/api/tracks/random?count=0');
             const response1 = await GET(request1);
             const data1 = await response1.json();
-            expect(data1.tracks).toHaveLength(Math.min(1, mockTrackPoolData.length));
+            expect(data1.tracks).toHaveLength(1);
 
-            // Test count=200 (should be capped at 100, but we only have 2 tracks in mock)
+            // Test count=200 (should be capped at 100, but we only have mockTrackPoolData.length tracks)
+            mockAdminSupabase.mockRpc.mockResolvedValueOnce({
+                data: mockTrackPoolData,
+                error: null,
+            });
             const request2 = new NextRequest('http://localhost:3000/api/tracks/random?count=200');
             const response2 = await GET(request2);
             const data2 = await response2.json();
@@ -125,17 +138,17 @@ describe('GET /api/tracks/random', () => {
         });
 
         it('認証済みユーザーの場合、dislike/like 履歴に基づいてフィルタリングされる', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: mockAuthenticatedUser },
                 error: null,
             });
 
             // Mock dislikes and likes
-            mockSupabase.mockSelect.mockResolvedValueOnce({
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({
                 data: [{ track_id: 12345 }],
                 error: null,
             }); // dislikes
-            mockSupabase.mockSelect.mockResolvedValueOnce({
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({
                 data: [{ track_id: 67890 }],
                 error: null,
             }); // likes
@@ -151,7 +164,7 @@ describe('GET /api/tracks/random', () => {
                 },
             ];
 
-            mockSupabase.mockLimit.mockResolvedValue({
+            mockAdminSupabase.mockRpc.mockResolvedValue({
                 data: filteredTracks,
                 error: null,
             });
@@ -162,23 +175,28 @@ describe('GET /api/tracks/random', () => {
 
             expect(response.status).toBe(200);
             expect(data.tracks).toBeDefined();
-            // Verify that the .not() method was called to exclude tracks
-            expect(mockSupabase.mockNot).toHaveBeenCalledWith(
-                'track_id',
-                'in',
-                expect.stringContaining('(')
+            // Verify that RPC was called with excluded_track_ids containing both IDs
+            expect(mockAdminSupabase.mockRpc).toHaveBeenCalledWith(
+                'get_random_tracks',
+                expect.objectContaining({
+                    limit_count: 10,
+                    excluded_track_ids: expect.arrayContaining([
+                        '12345',
+                        '67890',
+                    ]),
+                })
             );
         });
     });
 
     describe('異常系', () => {
         it('トラックプールが空の場合は 404 を返す', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: null,
             });
 
-            mockSupabase.mockLimit.mockResolvedValue({
+            mockAdminSupabase.mockRpc.mockResolvedValue({
                 data: [],
                 error: null,
             });
@@ -193,12 +211,12 @@ describe('GET /api/tracks/random', () => {
         });
 
         it('データベースエラー時は 500 を返す', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: null,
             });
 
-            mockSupabase.mockLimit.mockResolvedValue({
+            mockAdminSupabase.mockRpc.mockResolvedValue({
                 data: null,
                 error: new Error('Database connection failed'),
             });
@@ -215,12 +233,13 @@ describe('GET /api/tracks/random', () => {
 
     describe('エッジケース', () => {
         it('count パラメータが不正な値の場合はデフォルト10を使用', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: null },
                 error: null,
             });
 
-            const manyTracks = Array.from({ length: 20 }, (_, i) => ({
+            // Create exactly 10 tracks for the expected response
+            const tenTracks = Array.from({ length: 10 }, (_, i) => ({
                 track_id: String(i + 1),
                 track_name: `Track ${i + 1}`,
                 artist_name: `Artist ${i + 1}`,
@@ -228,8 +247,8 @@ describe('GET /api/tracks/random', () => {
                 preview_url: `https://example.com/preview${i + 1}.mp3`,
             }));
 
-            mockSupabase.mockLimit.mockResolvedValue({
-                data: manyTracks,
+            mockAdminSupabase.mockRpc.mockResolvedValue({
+                data: tenTracks,
                 error: null,
             });
 
@@ -239,10 +258,17 @@ describe('GET /api/tracks/random', () => {
 
             expect(response.status).toBe(200);
             expect(data.tracks).toHaveLength(10); // Default count
+            // Verify RPC was called with count=10
+            expect(mockAdminSupabase.mockRpc).toHaveBeenCalledWith(
+                'get_random_tracks',
+                expect.objectContaining({
+                    limit_count: 10,
+                })
+            );
         });
 
         it('除外トラック数が多い場合でも正常に動作する', async () => {
-            mockSupabase.auth.getUser.mockResolvedValue({
+            mockUserSupabase.auth.getUser.mockResolvedValue({
                 data: { user: mockAuthenticatedUser },
                 error: null,
             });
@@ -252,16 +278,16 @@ describe('GET /api/tracks/random', () => {
                 track_id: i + 1,
             }));
 
-            mockSupabase.mockSelect.mockResolvedValueOnce({
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({
                 data: manyDislikes,
                 error: null,
             }); // dislikes
-            mockSupabase.mockSelect.mockResolvedValueOnce({
+            mockUserSupabase.mockSelect.mockResolvedValueOnce({
                 data: [],
                 error: null,
             }); // likes
 
-            mockSupabase.mockLimit.mockResolvedValue({
+            mockAdminSupabase.mockRpc.mockResolvedValue({
                 data: mockTrackPoolData,
                 error: null,
             });

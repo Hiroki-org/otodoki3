@@ -7,6 +7,7 @@ dotenv.config({ path: '.env.test' });
 const requiredEnvVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
     'TEST_USER_EMAIL',
     'TEST_USER_PASSWORD',
 ] as const;
@@ -20,6 +21,7 @@ const env = process.env as Record<string, string>;
 const {
     NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY,
     TEST_USER_EMAIL,
     TEST_USER_PASSWORD,
     ALLOWED_EMAILS,
@@ -45,6 +47,7 @@ export default defineConfig({
         env: {
             NEXT_PUBLIC_SUPABASE_URL,
             NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            SUPABASE_SERVICE_ROLE_KEY,
             TEST_USER_EMAIL,
             TEST_USER_PASSWORD,
             ALLOWED_EMAILS: ALLOWED_EMAILS ?? TEST_USER_EMAIL,

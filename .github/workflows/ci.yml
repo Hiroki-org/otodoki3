@@ -117,6 +117,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_TEST }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
           TRACK_POOL_MAX_SIZE: ${{ secrets.TRACK_POOL_MAX_SIZE_TEST }}
 
   # ========================================
@@ -145,6 +146,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_TEST }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
           TRACK_POOL_MAX_SIZE: ${{ secrets.TRACK_POOL_MAX_SIZE_TEST }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
@@ -175,11 +177,34 @@ jobs:
           NPM_CONFIG_IGNORE_SCRIPTS: "true"
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply migrations to test DB
+        run: |
+          set -euxo pipefail
+
+          # Supabaseテスト環境に接続
+          SUPABASE_PROJECT_REF="${{ secrets.SUPABASE_PROJECT_REF_TEST }}"
+          SUPABASE_DB_PASSWORD="${{ secrets.SUPABASE_DB_PASSWORD_TEST }}"
+
+          # Link to test project
+          supabase link --project-ref "${SUPABASE_PROJECT_REF}"
+
+          # Apply migrations
+          set +o pipefail
+          yes | supabase db push --include-all
+          set -o pipefail
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_TEST }}
       - name: Run discovery E2E tests
         run: npx playwright test e2e/discovery.spec.ts
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_TEST }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
           TRACK_POOL_MAX_SIZE: ${{ secrets.TRACK_POOL_MAX_SIZE_TEST }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
@@ -215,6 +240,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_TEST }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
           TRACK_POOL_MAX_SIZE: ${{ secrets.TRACK_POOL_MAX_SIZE_TEST }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}

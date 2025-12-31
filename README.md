@@ -82,6 +82,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 TRACK_POOL_MAX_SIZE=10
 ```
 
+`/api/tracks/random` は DB 側の `get_random_tracks` RPC を `service_role` のみ実行可能にしているため、
+サーバー実行環境（本番/Vercel、E2E 実行時など）には追加で以下が必要です：
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
+```
+
 詳細は [src/lib/**tests**/README.md](src/lib/__tests__/README.md) を参照してください。
 
 ### テストカバレッジ目標

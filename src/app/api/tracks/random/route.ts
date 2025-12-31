@@ -1,20 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * 配列の要素をランダムな順序に並べ替えた新しい配列を作成する。
- *
- * @param array - 元の配列（破壊的変更は行わない）
- * @returns 引数 `array` の要素をランダムな順序に並べた新しい配列
- */
-function shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-}
+export const dynamic = 'force-dynamic';
 
 // Constants for user activity filtering
 const DISLIKE_EXCLUDE_DAYS = 30;
@@ -30,7 +18,8 @@ const MAX_EXCLUDE = 1000;
  */
 export async function GET(request: NextRequest) {
     try {
-        const supabase = await createClient();
+        const userClient = await createClient();
+        const adminClient = createAdminClient();
 
         // Parse count parameter (default: 10, max: 100)
         const { searchParams } = new URL(request.url);
@@ -42,7 +31,7 @@ export async function GET(request: NextRequest) {
         );
 
         // 認証チェック（オプショナル - 未認証でも動作）
-        const { data: authData, error: authError } = await supabase.auth.getUser();
+        const { data: authData, error: authError } = await userClient.auth.getUser();
         if (authError) {
             console.error('Failed to fetch authenticated user:', authError);
         }
@@ -64,12 +53,12 @@ export async function GET(request: NextRequest) {
                 { data: dislikes, error: dislikeError },
                 { data: likes, error: likeError }
             ] = await Promise.all([
-                supabase
+                userClient
                     .from('dislikes')
                     .select('track_id')
                     .eq('user_id', user.id)
                     .gte('created_at', thirtyDaysAgo),
-                supabase
+                userClient
                     .from('likes')
                     .select('track_id')
                     .eq('user_id', user.id)
@@ -77,19 +66,13 @@ export async function GET(request: NextRequest) {
             ]);
 
             if (dislikeError) {
-                console.error('Failed to fetch dislikes for filtering:', {
-                    error: dislikeError,
-                    userId: user.id,
-                });
+                console.error('Failed to fetch dislikes for filtering:', dislikeError.message);
             } else if (dislikes) {
                 excludedTrackIds.push(...dislikes.map(d => d.track_id));
             }
 
             if (likeError) {
-                console.error('Failed to fetch likes for filtering:', {
-                    error: likeError,
-                    userId: user.id,
-                });
+                console.error('Failed to fetch likes for filtering:', likeError.message);
             } else if (likes) {
                 excludedTrackIds.push(...likes.map(l => l.track_id));
             }
@@ -107,28 +90,17 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // プールから取得（小さなバッファのみ - 除外IDはデータベースでフィルタ済み）
-        const fetchCount = count + 20;
-
-        // Note: Sorting by fetched_at is omitted for better performance.
-        // Results are shuffled client-side anyway, so DB-level sorting is unnecessary.
-        let query = supabase
-            .from('track_pool')
-            .select('*')
-            .limit(fetchCount);
-
-        // 除外リストがある場合はフィルタリング
-        if (excludedTrackIds.length > 0) {
-            query = query.not('track_id', 'in', `(${excludedTrackIds.join(',')})`);
-        }
-
-        const { data: tracks, error } = await query;
+        // RPC を呼び出してランダムなトラックを取得
+        // get_random_tracks は DB 側で ORDER BY random() を行い、指定された ID を除外して返す
+        // excluded_track_ids は text[] なので String 配列に変換して渡す
+        // 空配列の場合は null を渡すことで SQL 側の分岐を簡潔にする
+        const { data: tracks, error } = await adminClient.rpc('get_random_tracks', {
+            limit_count: count,
+            excluded_track_ids: excludedTrackIds.length > 0 ? excludedTrackIds.map(String) : null,
+        });
 
         if (error) {
-            console.error('Failed to fetch tracks from pool:', {
-                error,
-                userId: user?.id,
-            });
+            console.error('Failed to fetch tracks from pool via RPC:', error.message);
             return NextResponse.json(
                 { success: false, error: 'Failed to fetch tracks' },
                 { status: 500 }
@@ -142,14 +114,17 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Shuffle and take requested count
-        const shuffled = shuffleArray(tracks);
-        const result = shuffled.slice(0, count);
-
-        return NextResponse.json({
-            success: true,
-            tracks: result,
-        });
+        return NextResponse.json(
+            {
+                success: true,
+                tracks: tracks,
+            },
+            {
+                headers: {
+                    'Cache-Control': 'no-store',
+                },
+            }
+        );
     } catch (err) {
         console.error('Unexpected error in /api/tracks/random:', err);
         return NextResponse.json(

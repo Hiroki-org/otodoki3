@@ -103,3 +103,29 @@ node --loader ts-node/esm src/tests/test-track-pool.ts
 - Apple RSS Charts API のレスポンス形式に注意し，適切に`Track`型にマッピングします
 - Apple RSS API は `previewUrl` を提供しないため，`item.url`（ストアページ URL）を使用しています
 - 環境変数が設定されていない場合のフォールバック処理を含めています
+
+## Supabase（本番）での最終確認: get_random_tracks
+
+このプロジェクトでは `public.get_random_tracks(integer, text[])` を `service_role` のみ実行可能にしています。
+Supabase Dashboard の SQL Editor で以下を実行して確認してください。
+
+### 動作確認
+
+```sql
+select * from public.get_random_tracks(10, null::text[]);
+```
+
+### ACL 確認（service_role のみ）
+
+`proacl` に `service_role=X/...` のみが付いていて、`anon` / `authenticated` が付いていないことを確認します。
+
+```sql
+select
+  p.oid::regprocedure as function,
+  p.prosecdef as security_definer,
+  p.proacl as acl
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'get_random_tracks';
+```
