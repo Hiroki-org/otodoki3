@@ -1,75 +1,71 @@
--- Migration: Add get_random_tracks RPC function
--- Purpose: Fetch random tracks from track_pool with exclusion support
--- This function provides database-level randomization to prevent artist clustering
-
 -- Enable required extension for efficient random sampling
 CREATE EXTENSION IF NOT EXISTS tsm_system_rows;
 
 -- Create the get_random_tracks function
-CREATE OR REPLACE FUNCTION get_random_tracks(
-    limit_count int DEFAULT 10,
-    excluded_track_ids text[] DEFAULT NULL
+CREATE OR REPLACE FUNCTION public.get_random_tracks(
+  limit_count int DEFAULT 10,
+  excluded_track_ids text[] DEFAULT NULL
 )
 RETURNS TABLE (
-    track_id text,
-    track_name text,
-    artist_name text,
-    collection_name text,
-    preview_url text,
-    artwork_url text,
-    track_view_url text,
-    genre text,
-    release_date text,
-    metadata jsonb,
-    fetched_at timestamptz
-) 
+  track_id text,
+  track_name text,
+  artist_name text,
+  collection_name text,
+  preview_url text,
+  artwork_url text,
+  track_view_url text,
+  genre text,
+  release_date text,
+  metadata jsonb,
+  fetched_at timestamptz
+)
+LANGUAGE plpgsql
+VOLATILE
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    validated_limit int;
-    sample_size int;
+  validated_limit int;
+  sample_size int;
 BEGIN
-    -- Validate and normalize limit_count to range 1-100
-    validated_limit := GREATEST(1, LEAST(100, COALESCE(limit_count, 10)));
-    
-    -- Calculate sample size (4x the limit to ensure enough candidates after filtering)
-    sample_size := validated_limit * 4;
-    
-    -- Return random tracks with exclusion filter
-    RETURN QUERY
-    SELECT 
-        tp.track_id::text AS track_id,
-        tp.track_name::text AS track_name,
-        tp.artist_name::text AS artist_name,
-        tp.collection_name::text AS collection_name,
-        tp.preview_url::text AS preview_url,
-        tp.artwork_url::text AS artwork_url,
-        tp.track_view_url::text AS track_view_url,
-        tp.genre::text AS genre,
-        tp.release_date::text AS release_date,
-        tp.metadata::jsonb AS metadata,
-        tp.fetched_at::timestamptz AS fetched_at
-    FROM track_pool tp
-    TABLESAMPLE SYSTEM_ROWS(sample_size)
-    WHERE 
-        -- Exclude tracks if exclusion list is provided and not empty
-        (COALESCE(array_length(excluded_track_ids, 1), 0) = 0
-         OR tp.track_id::text <> ALL(excluded_track_ids))
-    ORDER BY random()
-    LIMIT validated_limit;
+  -- Validate and normalize limit_count to range 1-100
+  validated_limit := GREATEST(1, LEAST(100, COALESCE(limit_count, 10)));
+
+  -- Calculate sample size (4x the limit to ensure enough candidates after filtering)
+  sample_size := validated_limit * 4;
+
+  RETURN QUERY
+  SELECT
+    tp.track_id::text        AS track_id,
+    tp.track_name::text      AS track_name,
+    tp.artist_name::text     AS artist_name,
+    tp.collection_name::text AS collection_name,
+    tp.preview_url::text     AS preview_url,
+    tp.artwork_url::text     AS artwork_url,
+    tp.track_view_url::text  AS track_view_url,
+    tp.genre::text           AS genre,
+    tp.release_date::text    AS release_date,
+    tp.metadata::jsonb       AS metadata,
+    tp.fetched_at::timestamptz AS fetched_at
+  FROM public.track_pool tp
+  TABLESAMPLE SYSTEM_ROWS(sample_size)
+  WHERE
+    (
+      COALESCE(array_length(excluded_track_ids, 1), 0) = 0
+      OR tp.track_id::text <> ALL (excluded_track_ids)
+    )
+  ORDER BY random()
+  LIMIT validated_limit;
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$;
 
--- Set security policies (accessible by authenticated and anon roles)
-GRANT EXECUTE ON FUNCTION get_random_tracks(int, text[]) TO authenticated, anon;
+-- Security: do NOT expose this SECURITY DEFINER function to anon/authenticated
+REVOKE ALL ON FUNCTION public.get_random_tracks(int, text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_random_tracks(int, text[]) FROM anon;
+REVOKE ALL ON FUNCTION public.get_random_tracks(int, text[]) FROM authenticated;
 
--- Add comment for documentation
-COMMENT ON FUNCTION get_random_tracks(int, text[]) IS 
-'Fetches random tracks from track_pool with optional exclusion list. 
-Uses TABLESAMPLE for efficient random sampling at database level.
-Parameters:
-  - limit_count: Number of tracks to return (1-100, default 10)
-  - excluded_track_ids: Array of track IDs (as text) to exclude (optional)
-Returns: Table of track records with all necessary fields for API response.
-Security: Accessible by authenticated and anon roles.';
+-- Allow only server-side usage (service_role)
+GRANT EXECUTE ON FUNCTION public.get_random_tracks(int, text[]) TO service_role;
+
+COMMENT ON FUNCTION public.get_random_tracks(int, text[]) IS
+'Fetches random tracks from track_pool with optional exclusion list. Uses TABLESAMPLE SYSTEM_ROWS for efficient sampling. Intended to be executed only by service_role.';
