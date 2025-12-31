@@ -7,11 +7,13 @@ import {
   Heart,
   XCircle,
   ListMusic,
-  Settings,
   Info,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import packageJson from "../../../package.json";
+import { SettingsSection } from "./SettingsSection";
+import Link from "next/link";
 
 export default async function MyPage() {
   const supabase = await createClient();
@@ -42,11 +44,26 @@ export default async function MyPage() {
 
   // Log query errors for observability
   if (likesResult.error)
-    console.error("Failed to fetch likes:", likesResult.error);
+    console.error("[MyPage] Failed to fetch likes:", {
+      error: likesResult.error,
+      userId: user.id,
+    });
   if (dislikesResult.error)
-    console.error("Failed to fetch dislikes:", dislikesResult.error);
+    console.error("[MyPage] Failed to fetch dislikes:", {
+      error: dislikesResult.error,
+      userId: user.id,
+    });
   if (playlistsResult.error)
-    console.error("Failed to fetch playlists:", playlistsResult.error);
+    console.error("[MyPage] Failed to fetch playlists:", {
+      error: playlistsResult.error,
+      userId: user.id,
+    });
+
+  const hasError = !!(
+    likesResult.error ||
+    dislikesResult.error ||
+    playlistsResult.error
+  );
 
   const likesCount = likesResult.count ?? 0;
   const dislikesCount = dislikesResult.count ?? 0;
@@ -70,6 +87,12 @@ export default async function MyPage() {
         </div>
 
         {/* Stats */}
+        {hasError && (
+          <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>データの取得に失敗しました。</span>
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center justify-center gap-2">
             <Heart className="w-6 h-6 text-pink-500" />
@@ -88,30 +111,8 @@ export default async function MyPage() {
           </div>
         </div>
 
-        {/* Settings (Placeholder) */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold px-2">設定</h2>
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="p-4 flex items-center justify-between border-b border-border opacity-50">
-              <div className="flex items-center gap-3">
-                <Settings className="w-5 h-5" />
-                <span>一般設定</span>
-              </div>
-              <span className="text-xs bg-secondary px-2 py-1 rounded">
-                準備中
-              </span>
-            </div>
-            <div className="p-4 flex items-center justify-between opacity-50">
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full border border-border" />
-                <span>テーマ切り替え</span>
-              </div>
-              <span className="text-xs bg-secondary px-2 py-1 rounded">
-                準備中
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Settings */}
+        <SettingsSection />
 
         {/* App Info */}
         <div className="space-y-4">
@@ -126,13 +127,16 @@ export default async function MyPage() {
                 {packageJson.version}
               </span>
             </div>
-            <div className="p-4 flex items-center justify-between">
+            <Link
+              href="/terms"
+              className="p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <span className="w-5" /> {/* Spacer for alignment */}
                 <span>利用規約</span>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground/30" />
-            </div>
+            </Link>
           </div>
         </div>
 
