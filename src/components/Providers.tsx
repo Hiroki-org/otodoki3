@@ -12,8 +12,9 @@ export function Providers({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            staleTime: 5 * 60 * 1000, // 5分間はキャッシュを新鮮とみなす
+            gcTime: 30 * 60 * 1000, // 30分間キャッシュを保持
             refetchOnWindowFocus: false,
-            retry: 1,
           },
         },
       })

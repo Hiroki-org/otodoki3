@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { X, Music, ChevronRight } from "lucide-react";
 import { Toast } from "./Toast";
 
@@ -25,6 +26,7 @@ export function AddToPlaylistModal({
   trackId,
   onSuccess,
 }: AddToPlaylistModalProps) {
+  const queryClient = useQueryClient();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
@@ -101,6 +103,11 @@ export function AddToPlaylistModal({
           message: `「${playlist.name}」に追加しました`,
           type: "success",
         });
+
+        // キャッシュを無効化して次回アクセス時に再フェッチ
+        queryClient.invalidateQueries({ queryKey: ["playlists"] });
+        queryClient.invalidateQueries({ queryKey: ["playlist", playlistId] });
+
         onSuccess?.();
         if (closeTimerRef.current != null) {
           window.clearTimeout(closeTimerRef.current);
