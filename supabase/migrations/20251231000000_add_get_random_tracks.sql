@@ -39,17 +39,17 @@ BEGIN
     -- Return random tracks with exclusion filter
     RETURN QUERY
     SELECT 
-        tp.track_id,
-        tp.track_name,
-        tp.artist_name,
-        tp.collection_name,
-        tp.preview_url,
-        tp.artwork_url,
-        tp.track_view_url,
-        tp.genre,
-        tp.release_date,
-        tp.metadata,
-        tp.fetched_at
+        tp.track_id::text AS track_id,
+        tp.track_name::text AS track_name,
+        tp.artist_name::text AS artist_name,
+        tp.collection_name::text AS collection_name,
+        tp.preview_url::text AS preview_url,
+        tp.artwork_url::text AS artwork_url,
+        tp.track_view_url::text AS track_view_url,
+        tp.genre::text AS genre,
+        tp.release_date::text AS release_date,
+        tp.metadata::jsonb AS metadata,
+        tp.fetched_at::timestamptz AS fetched_at
     FROM track_pool tp
     TABLESAMPLE SYSTEM_ROWS(sample_size)
     WHERE 
