@@ -181,9 +181,7 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client dnsutils
-      - name: Apply migrations and seed data to test DB
+      - name: Apply migrations to test DB
         run: |
           set -euxo pipefail
 
@@ -198,32 +196,6 @@ jobs:
           set +o pipefail
           yes | supabase db push --include-all
           set -o pipefail
-
-          # DB接続情報を構築
-          DB_HOST="$(dig +short A "db.${SUPABASE_PROJECT_REF}.supabase.co" | head -n 1)"
-          if [ -z "$DB_HOST" ]; then
-            echo "Failed to resolve IPv4 for db.${SUPABASE_PROJECT_REF}.supabase.co"
-            exit 1
-          fi
-          DB_PORT="5432"
-          DB_NAME="postgres"
-          DB_USER="postgres"
-
-          # DB接続チェック
-          PGPASSWORD="${SUPABASE_DB_PASSWORD}" psql \
-            "postgresql://${DB_USER}:${SUPABASE_DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require" \
-            -c "SELECT 1;"
-
-          # PostgreSQL経由でseed SQLを実行
-          PGPASSWORD="${SUPABASE_DB_PASSWORD}" psql \
-            "postgresql://${DB_USER}:${SUPABASE_DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require" \
-            -f supabase/seeds/e2e_track_pool_seed.sql
-
-          # 投入確認: track_poolのレコード数を表示
-          echo "Checking track_pool count..."
-          PGPASSWORD="${SUPABASE_DB_PASSWORD}" psql \
-            "postgresql://${DB_USER}:${SUPABASE_DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require" \
-            -c "SELECT COUNT(*) AS track_pool_count FROM public.track_pool;"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_TEST }}
