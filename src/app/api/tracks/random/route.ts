@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ const MAX_EXCLUDE = 1000;
  */
 export async function GET(request: NextRequest) {
     try {
-        const supabase = await createClient();
+        const userClient = await createClient();
+        const adminClient = createAdminClient();
 
         // Parse count parameter (default: 10, max: 100)
         const { searchParams } = new URL(request.url);
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
         );
 
         // 認証チェック（オプショナル - 未認証でも動作）
-        const { data: authData, error: authError } = await supabase.auth.getUser();
+        const { data: authData, error: authError } = await userClient.auth.getUser();
         if (authError) {
             console.error('Failed to fetch authenticated user:', authError);
         }
@@ -51,12 +53,12 @@ export async function GET(request: NextRequest) {
                 { data: dislikes, error: dislikeError },
                 { data: likes, error: likeError }
             ] = await Promise.all([
-                supabase
+                userClient
                     .from('dislikes')
                     .select('track_id')
                     .eq('user_id', user.id)
                     .gte('created_at', thirtyDaysAgo),
-                supabase
+                userClient
                     .from('likes')
                     .select('track_id')
                     .eq('user_id', user.id)
@@ -92,7 +94,7 @@ export async function GET(request: NextRequest) {
         // get_random_tracks は DB 側で ORDER BY random() を行い、指定された ID を除外して返す
         // excluded_track_ids は text[] なので String 配列に変換して渡す
         // 空配列の場合は null を渡すことで SQL 側の分岐を簡潔にする
-        const { data: tracks, error } = await supabase.rpc('get_random_tracks', {
+        const { data: tracks, error } = await adminClient.rpc('get_random_tracks', {
             limit_count: count,
             excluded_track_ids: excludedTrackIds.length > 0 ? excludedTrackIds.map(String) : null,
         });

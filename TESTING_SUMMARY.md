@@ -2,40 +2,42 @@
 
 ## 実装概要
 
-このPRは、issue で要求されているテスト環境の整備とVitestによる単体テスト・統合テストの実装を完了しました。
+この PR は、issue で要求されているテスト環境の整備と Vitest による単体テスト・統合テストの実装を完了しました。
 
 ## 実装内容
 
 ### 1. テスト環境設定
 
-#### Vitest設定 (`vitest.config.ts`)
+#### Vitest 設定 (`vitest.config.ts`)
 
 - TypeScript サポート
 - カバレッジ閾値: 80% (branches, functions, lines, statements)
 - カバレッジレポート: text, lcov, html
 - テストパス: `src/**/*.{test,spec}.{ts,tsx}`
 
-#### CI/CD設定 (`.github/workflows/ci.yml`)
+#### CI/CD 設定 (`.github/workflows/ci.yml`)
 
 - テスト用環境変数の設定
   - `NEXT_PUBLIC_SUPABASE_URL_TEST`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY_TEST`
+  - `SUPABASE_SERVICE_ROLE_KEY_TEST`
   - `TRACK_POOL_MAX_SIZE_TEST`
-- Vitestによるテスト実行
+- Vitest によるテスト実行
 
 ### 2. テストフィクスチャ
 
 #### `src/lib/__fixtures__/tracks.ts`
 
-- モックトラックデータ（3件）
+- モックトラックデータ（3 件）
 - Apple RSS API モックレスポンス
-- エッジケース用データ（空配列、preview_url無し）
+- エッジケース用データ（空配列、preview_url 無し）
 
 ### 3. テストスイート
 
 #### A. `src/lib/refill-methods/__tests__/chart.test.ts` (22 tests)
 
-**カバレッジ**: 
+**カバレッジ**:
+
 - Statements: **93.47%**
 - Lines: **95.34%**
 - Functions: 83.33%
@@ -46,38 +48,43 @@
 ##### `fetchTracksFromChart` (14 tests)
 
 - 正常系 (5 tests)
-  - ✅ Apple RSS APIからトラックを取得
-  - ✅ デフォルトlimit: 50
-  - ✅ カスタムlimitの適用
-  - ✅ カスタムUser-Agentの使用
-  - ✅ デフォルトUser-Agentの使用
+
+  - ✅ Apple RSS API からトラックを取得
+  - ✅ デフォルト limit: 50
+  - ✅ カスタム limit の適用
+  - ✅ カスタム User-Agent の使用
+  - ✅ デフォルト User-Agent の使用
 
 - エッジケース (4 tests)
+
   - ✅ 空配列の処理
-  - ✅ preview_url無しトラックのフィルタリング
-  - ✅ 不正なAPIレスポンスの処理
-  - ✅ feed.results無しレスポンスの処理
+  - ✅ preview_url 無しトラックのフィルタリング
+  - ✅ 不正な API レスポンスの処理
+  - ✅ feed.results 無しレスポンスの処理
 
 - エラーハンドリング (3 tests)
-  - ✅ 429レート制限エラー
-  - ✅ HTTPエラー（500等）
+
+  - ✅ 429 レート制限エラー
+  - ✅ HTTP エラー（500 等）
   - ✅ ネットワークエラー
 
 - タイムアウト処理 (2 tests)
-  - ✅ AbortControllerの使用確認
+  - ✅ AbortController の使用確認
   - ✅ 成功時のタイムアウトクリア
 
 ##### `fetchTracksFromChartWithRetry` (8 tests)
 
 - リトライロジック (4 tests)
+
   - ✅ 初回成功
   - ✅ リトライ後成功
   - ✅ 最大リトライ回数後にエラー
-  - ✅ デフォルトmaxRetries: 3
+  - ✅ デフォルト maxRetries: 3
 
 - 指数バックオフ (2 tests)
+
   - ✅ 遅延の指数的増加
-  - ✅ maxDelayの適用
+  - ✅ maxDelay の適用
 
 - ジッター (2 tests)
   - ✅ ジッターの適用
@@ -85,48 +92,52 @@
 
 #### B. `src/lib/__tests__/track-pool.test.ts` (統合テスト)
 
-**注意**: Supabase接続が必要（CI環境で実行）
+**注意**: Supabase 接続が必要（CI 環境で実行）
 
 **テストケース**:
 
 ##### `validateMetadata` (7 tests)
 
-- ✅ null/undefinedの処理
+- ✅ null/undefined の処理
 - ✅ 配列の拒否
-- ✅ 有効なJSON文字列のパース
-- ✅ 無効なJSON文字列の処理
-- ✅ JSON配列文字列の拒否
+- ✅ 有効な JSON 文字列のパース
+- ✅ 無効な JSON 文字列の処理
+- ✅ JSON 配列文字列の拒否
 - ✅ 有効なオブジェクトの受け入れ
 - ✅ プリミティブ型の拒否
 
-##### track-pool統合テスト
+##### track-pool 統合テスト
 
 - `getPoolSize`
+
   - ✅ 現在のプールサイズ取得
   - ✅ トラック追加後のサイズ反映
 
 - `addTracksToPool`
+
   - ✅ トラックの追加
   - ✅ 空配列の処理
-  - ✅ 重複track_idでのupsert
+  - ✅ 重複 track_id での upsert
   - ✅ オプション（method, weight）の受け入れ
   - ✅ メタデータのバリデーション
 
 - `getTracksFromPool`
+
   - ✅ 空プールでの空配列返却
   - ✅ プールからのトラック取得
-  - ✅ fetched_at昇順でのソート
-  - ✅ countリミットの適用
+  - ✅ fetched_at 昇順でのソート
+  - ✅ count リミットの適用
 
 - `trimPool`
+
   - ✅ サイズ超過時のトリム
   - ✅ 空プールでのエラー無し
   - ✅ サイズ未満時の維持
-  - ✅ RPC関数の正常呼び出し
+  - ✅ RPC 関数の正常呼び出し
 
 - エラーハンドリング
-  - ✅ 負のcountの処理
-  - ✅ ゼロcountの処理
+  - ✅ 負の count の処理
+  - ✅ ゼロ count の処理
   - ✅ 必須フィールド欠落時のエラー
 
 #### C. `src/types/__tests__/track-pool.test.ts` (5 tests)
@@ -135,21 +146,22 @@
 
 - ✅ 有効な重み (0, 0.5, 1)
 - ✅ 負の重みでエラー
-- ✅ 1超過でエラー
-- ✅ NaNでエラー
-- ✅ Infinityでエラー
+- ✅ 1 超過でエラー
+- ✅ NaN でエラー
+- ✅ Infinity でエラー
 
 ### 4. テスト戦略
 
 #### モック vs 統合テスト
 
-- **モックテスト**: 
-  - 外部API (Apple RSS) は完全にモック化
-  - `vi.spyOn(global, 'fetch')` を使用
-  - Supabase接続不要
+- **モックテスト**:
 
-- **統合テスト**: 
-  - Supabaseは実際の接続を使用
+  - 外部 API (Apple RSS) は完全にモック化
+  - `vi.spyOn(global, 'fetch')` を使用
+  - Supabase 接続不要
+
+- **統合テスト**:
+  - Supabase は実際の接続を使用
   - テスト環境のデータベースを使用
   - 自動クリーンアップ実装
 
@@ -215,9 +227,10 @@ Tests: 27 passed, 27 total
 ```
 
 **詳細**:
+
 - ✅ chart.test.ts: 22/22 passed
 - ✅ track-pool.test.ts (types): 5/5 passed
-- ⏳ track-pool.test.ts (lib): CI環境で実行
+- ⏳ track-pool.test.ts (lib): CI 環境で実行
 
 ### カバレッジ
 
@@ -230,6 +243,7 @@ chart.ts            | 93.47   | 88.88    | 83.33   | 95.34   | 93-94
 ## セキュリティ
 
 CodeQL スキャン結果: **0 alerts** ✅
+
 - JavaScript/TypeScript: 問題なし
 - GitHub Actions: 問題なし
 
@@ -238,14 +252,17 @@ CodeQL スキャン結果: **0 alerts** ✅
 ### 実施した改善
 
 1. **テスト隔離性の向上**
+
    - `global.fetch = jest.fn()` → `vi.spyOn(global, 'fetch')` に変更
    - 各テスト後に自動リストア
 
 2. **エラーハンドリング改善**
+
    - クリーンアップ関数でエラーを throw（テスト失敗させる）
    - console.error の代わりに適切なエラー処理
 
 3. **設定の最適化**
+
    - jest.config.js の冗長なパターン削除
    - .gitignore の重複エントリ削除
 
@@ -255,9 +272,9 @@ CodeQL スキャン結果: **0 alerts** ✅
 
 ## 今後の展開
 
-### CI環境での確認事項
+### CI 環境での確認事項
 
-- [ ] track-pool統合テストの実行確認
+- [ ] track-pool 統合テストの実行確認
 - [ ] カバレッジレポートの自動生成
 - [ ] カバレッジバッジの追加（オプション）
 
@@ -265,14 +282,14 @@ CodeQL スキャン結果: **0 alerts** ✅
 
 - [ ] src/lib/refill-methods/keyword.ts のテスト
 - [ ] src/lib/refill-methods/random.ts のテスト
-- [ ] E2Eテスト（Playwright等）
+- [ ] E2E テスト（Playwright 等）
 
 ## 結論
 
 ✅ **テスト環境の整備完了**
-✅ **Vitest単体テストの実装完了**
+✅ **Vitest 単体テストの実装完了**
 ✅ **カバレッジ目標達成** (chart.ts: 93.47%)
 ✅ **セキュリティスキャン通過** (0 alerts)
 ✅ **コードレビュー対応完了**
 
-すべての完了条件を満たしています。CI環境でのテスト実行を確認してマージ可能です。
+すべての完了条件を満たしています。CI 環境でのテスト実行を確認してマージ可能です。
