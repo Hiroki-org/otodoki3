@@ -19,7 +19,9 @@ describe('logout', () => {
     vi.clearAllMocks();
     // window.location をモック化
     // JSDOM では window.location は読み取り専用なので削除して再定義する
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (window as any).location;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).location = { href: '' };
   });
 

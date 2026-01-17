@@ -35,6 +35,7 @@ describe('track-pool (Unit)', () => {
     // select() の戻り値は .order() を持ちつつ、await 可能なオブジェクト (thenを持つ)
     mockSelect.mockReturnValue({
       order: mockOrder,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       then: (onfulfilled: any) => Promise.resolve({ count: 100, error: null }).then(onfulfilled)
     });
 
@@ -147,6 +148,7 @@ describe('track-pool (Unit)', () => {
       // select().then(...) が呼ばれる
       mockSelect.mockImplementation(() => ({
           order: mockOrder,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           then: (resolve: any) => resolve({ count: 50, error: null })
       }));
 
@@ -160,6 +162,7 @@ describe('track-pool (Unit)', () => {
     it('エラー時に例外をスローする', async () => {
         mockSelect.mockImplementation(() => ({
             order: mockOrder,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             then: (resolve: any) => resolve({ count: null, error: { message: 'Count Error' } })
         }));
 

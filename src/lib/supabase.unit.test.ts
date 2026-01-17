@@ -26,10 +26,11 @@ describe('supabase module', () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-key';
 
-        const { supabase } = await import('./supabase');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { supabase } = await import('./supabase') as any;
 
         expect(createClientMock).toHaveBeenCalledWith('https://example.com', 'valid-key');
-        expect((supabase as any).realClient).toBe(true);
+        expect(supabase.realClient).toBe(true);
     });
 
     it('環境変数が不足しており、かつテスト環境でない場合、スタブを使用する', async () => {
@@ -61,7 +62,7 @@ describe('supabase module', () => {
          delete process.env.SUPABASE_URL;
 
          // NODE_ENV is 'test' by default in vitest
-         const { supabase } = await import('./supabase');
+         await import('./supabase');
 
          // ダミー値で呼ばれる
          expect(createClientMock).toHaveBeenCalledWith('http://127.0.0.1', 'anon');
