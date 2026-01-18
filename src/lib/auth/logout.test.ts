@@ -22,7 +22,9 @@ describe("logout", () => {
   beforeEach(() => {
     // window.locationをモック化するために削除
     // JSDOMではwindow.locationはread-onlyプロパティのため、削除して再定義する必要がある
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (window as any).location;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     window.location = { href: "" } as any;
 
     // モックの呼び出し履歴をクリア
