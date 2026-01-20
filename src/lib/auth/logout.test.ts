@@ -30,7 +30,9 @@ describe('logout', () => {
 
         // window.location のモック化
         // JSDOM では window.location は読み取り専用なので、delete して再定義する必要がある
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (window as any).location
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         window.location = { href: '' } as any
     })
 
