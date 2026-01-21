@@ -26,6 +26,7 @@ describe('createAdminClient', () => {
 
     const client = createAdminClient();
     expect(client).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((client as any).mockClient).toBe(true);
   });
 

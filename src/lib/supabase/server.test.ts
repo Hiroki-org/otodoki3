@@ -37,8 +37,11 @@ describe('createClient (Server)', () => {
 
     const client = await createClient();
     expect(client).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((client as any).mockClient).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((client as any).url).toBe('https://example.supabase.co');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((client as any).key).toBe('anon-key');
   });
 
@@ -67,11 +70,13 @@ describe('createClient (Server)', () => {
             throw new Error('Server Component cannot set cookies');
         }),
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cookies as any).mockResolvedValue(mockCookieStore);
 
     const client = await createClient();
 
     // cookie設定メソッドを呼び出してエラーがスローされないことを確認
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const setAll = (client as any).options.cookies.setAll;
     expect(() => setAll([{ name: 'test', value: 'value' }])).not.toThrow();
   });
