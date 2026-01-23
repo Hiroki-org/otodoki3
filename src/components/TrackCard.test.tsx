@@ -6,10 +6,10 @@ import type { Track } from "../types/track-pool";
 
 // Mock next/image
 vi.mock("next/image", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   default: ({ fill, unoptimized, ...props }: any) => {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img {...props} />;
+    return <img {...props} alt={props.alt || ""} />;
   },
 }));
 
