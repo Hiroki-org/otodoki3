@@ -1,49 +1,53 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { logout } from "./logout";
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { logout } from './logout'
 
-// ホイスティング対応: vi.mock内で使用する変数はvi.hoistedで定義する
-const mocks = vi.hoisted(() => ({
-  signOut: vi.fn(),
-}));
+// vi.hoisted を使用して、vi.mock 内で参照できるように変数を巻き上げる
+const mocks = vi.hoisted(() => {
+    return {
+        signOut: vi.fn(),
+        createClient: vi.fn(),
+    }
+})
 
-// Supabaseクライアントのモック化
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
-    auth: {
-      signOut: mocks.signOut,
-    },
-  }),
-}));
+// モジュール全体のモック
+vi.mock('@/lib/supabase/client', () => ({
+    createClient: mocks.createClient
+}))
 
-describe("logout", () => {
-  // テスト実行前のwindow.locationを保存
-  const originalLocation = window.location;
+describe('logout', () => {
+    const originalLocation = window.location
 
-  beforeEach(() => {
-    // window.locationをモック化するために削除
-    // JSDOMではwindow.locationはread-onlyプロパティのため、削除して再定義する必要がある
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (window as any).location;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    window.location = { href: "" } as any;
+    beforeEach(() => {
+        // 各テストの前にモックをリセット
+        vi.clearAllMocks()
 
-    // モックの呼び出し履歴をクリア
-    vi.clearAllMocks();
-  });
+        // createClient の戻り値を設定
+        mocks.createClient.mockReturnValue({
+            auth: {
+                signOut: mocks.signOut
+            }
+        })
 
-  afterEach(() => {
-    // テスト終了後にwindow.locationを元に戻す
-    window.location = originalLocation;
-  });
+        // window.location のモック化
+        // JSDOM では window.location は読み取り専用なので、delete して再定義する必要がある
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any).location
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        window.location = { href: '' } as any
+    })
 
-  it("ログアウト処理を実行し、ログインページへリダイレクトすること", async () => {
-    // 関数実行
-    await logout();
+    afterEach(() => {
+        // テスト後に元の window.location に戻す
+        window.location = originalLocation
+    })
 
-    // 検証: SupabaseのsignOutメソッドが1回呼ばれたこと
-    expect(mocks.signOut).toHaveBeenCalledTimes(1);
+    it('Supabase の signOut を呼び出し、ログインページへリダイレクトする', async () => {
+        await logout()
 
-    // 検証: ログインページ(/login)へリダイレクトされたこと
-    expect(window.location.href).toBe("/login");
-  });
-});
+        // signOut が呼ばれたことを確認
+        expect(mocks.signOut).toHaveBeenCalledTimes(1)
+
+        // /login へリダイレクトされたことを確認
+        expect(window.location.href).toBe('/login')
+    })
+})

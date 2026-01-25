@@ -1,45 +1,32 @@
-import { describe, it, expect } from "vitest";
-import { cn } from "./utils";
+import { describe, it, expect } from 'vitest'
+import { cn } from './utils'
 
-describe("cn utility", () => {
-  it("クラス名を正しく結合すること", () => {
-    const result = cn("class1", "class2");
-    expect(result).toBe("class1 class2");
-  });
+describe('cn (className utility)', () => {
+    it('複数のクラス名を結合する', () => {
+        const result = cn('class1', 'class2', 'class3')
+        expect(result).toBe('class1 class2 class3')
+    })
 
-  it("条件付きクラス名を正しく処理すること", () => {
-    const result = cn("class1", true && "class2", false && "class3");
-    expect(result).toBe("class1 class2");
-  });
+    it('条件付きクラス名を正しく処理する', () => {
+        const result = cn(
+            'class1',
+            true && 'class2',
+            false && 'class3',
+            undefined,
+            null,
+            'class4'
+        )
+        expect(result).toBe('class1 class2 class4')
+    })
 
-  it("配列形式のクラス名を正しく処理すること", () => {
-    const result = cn(["class1", "class2"]);
-    expect(result).toBe("class1 class2");
-  });
+    it('Tailwind CSS のクラス競合をマージして解決する', () => {
+        // px-2 と px-4 が競合する場合、後のものが優先される（tailwind-merge の機能）
+        const result = cn('px-2 py-1', 'px-4')
+        expect(result).toBe('py-1 px-4')
+    })
 
-  it("オブジェクト形式のクラス名を正しく処理すること", () => {
-    const result = cn({ class1: true, class2: false, class3: true });
-    expect(result).toBe("class1 class3");
-  });
-
-  it("Tailwindのクラス競合を正しく解決すること（後勝ち）", () => {
-    // p-4 と p-2 は競合する。後に指定された p-2 が優先されるべき。
-    const result = cn("p-4", "p-2");
-    expect(result).toBe("p-2");
-  });
-
-  it("複雑な組み合わせを正しく処理すること", () => {
-    const result = cn(
-      "text-red-500",
-      true && "bg-blue-500",
-      { "p-4": true, "m-2": false },
-      ["hover:text-white"]
-    );
-    expect(result).toBe("text-red-500 bg-blue-500 p-4 hover:text-white");
-  });
-
-  it("undefined や null を無視すること", () => {
-    const result = cn("class1", undefined, null, "class2");
-    expect(result).toBe("class1 class2");
-  });
-});
+    it('配列やオブジェクト形式の入力も処理できる', () => {
+        const result = cn('class1', ['class2', 'class3'], { class4: true, class5: false })
+        expect(result).toBe('class1 class2 class3 class4')
+    })
+})
