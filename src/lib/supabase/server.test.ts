@@ -31,8 +31,10 @@ describe('src/lib/supabase/server.ts', () => {
       getAll: vi.fn().mockReturnValue([{ name: 'test', value: 'value' }]),
       set: vi.fn(),
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cookies as any).mockResolvedValue(mockCookieStore);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (createServerClient as any).mockReturnValue('mock-client');
 
     const client = await createClient();
@@ -51,6 +53,7 @@ describe('src/lib/supabase/server.ts', () => {
     );
 
     // createServerClientに渡された cookies オブジェクトの動作検証
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calls = (createServerClient as any).mock.calls;
     const passedOptions = calls[0][2];
 
@@ -74,10 +77,13 @@ describe('src/lib/supabase/server.ts', () => {
         throw new Error('Server Component cannot set cookies');
       }),
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cookies as any).mockResolvedValue(mockCookieStore);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (createServerClient as any).mockReturnValue('mock-client');
 
     await createClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calls = (createServerClient as any).mock.calls;
     const passedOptions = calls[0][2];
 

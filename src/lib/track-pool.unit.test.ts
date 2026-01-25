@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool } from '@/lib/track-pool';
 
 // モックの定義
@@ -116,6 +116,7 @@ describe('src/lib/track-pool.ts', () => {
           track_name: 'New Track',
           artist_name: 'New Artist',
           preview_url: 'url',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any
       ];
 
@@ -141,6 +142,7 @@ describe('src/lib/track-pool.ts', () => {
     it('異常系: Upsertエラーが発生した場合は例外を投げる', async () => {
         mocks.upsert.mockResolvedValue({ error: { message: 'Upsert Failed' } });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tracks = [{ track_id: 1 } as any];
         await expect(addTracksToPool(tracks)).rejects.toThrow('Failed to add tracks to pool: Upsert Failed');
     });
