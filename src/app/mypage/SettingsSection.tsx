@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Laptop } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const THEMES = ["light", "dark", "system"] as const;
@@ -27,10 +27,12 @@ export function SettingsSection() {
             <div className="w-5 h-5 flex items-center justify-center">
               {!isMounted ? (
                 <div className="w-5 h-5" />
+              ) : theme === "system" ? (
+                <Laptop className="w-5 h-5" data-testid="theme-icon-laptop" />
               ) : resolvedTheme === "dark" ? (
-                <Moon className="w-5 h-5" />
+                <Moon className="w-5 h-5" data-testid="theme-icon-moon" />
               ) : (
-                <Sun className="w-5 h-5" />
+                <Sun className="w-5 h-5" data-testid="theme-icon-sun" />
               )}
             </div>
             <span>テーマ切り替え</span>
