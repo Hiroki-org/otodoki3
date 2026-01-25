@@ -1,6 +1,7 @@
 import React from "react";
 import { render, cleanup, act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SwipeableCard, SwipeableCardRef } from "./SwipeableCard";
 
 const mockTrack = {
@@ -12,8 +13,17 @@ const mockTrack = {
 };
 
 describe("SwipeableCard", () => {
+  let queryClient: QueryClient;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
   });
 
   afterEach(() => {
@@ -21,11 +31,19 @@ describe("SwipeableCard", () => {
     vi.useRealTimers();
   });
 
+  const renderWithClient = (ui: React.ReactElement) => {
+    return render(
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    );
+  };
+
   it("アニメーション完了後にロックが解除され連続スワイプできる", () => {
     const onSwipe = vi.fn();
     const ref = React.createRef<SwipeableCardRef>();
 
-    render(<SwipeableCard ref={ref} item={mockTrack} isTop onSwipe={onSwipe} index={0} />);
+    renderWithClient(
+      <SwipeableCard ref={ref} item={mockTrack} isTop onSwipe={onSwipe} index={0} />
+    );
 
     act(() => {
       ref.current?.swipeLeft();
@@ -48,7 +66,9 @@ describe("SwipeableCard", () => {
   it("キーボード操作でもロックが解除される", () => {
     const onSwipe = vi.fn();
 
-    render(<SwipeableCard item={mockTrack} isTop onSwipe={onSwipe} index={0} />);
+    renderWithClient(
+      <SwipeableCard item={mockTrack} isTop onSwipe={onSwipe} index={0} />
+    );
     const card = screen.getByLabelText("Test Track by Test Artistをスワイプ");
 
     act(() => {
