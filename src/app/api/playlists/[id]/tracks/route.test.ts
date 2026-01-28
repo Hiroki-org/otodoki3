@@ -126,19 +126,17 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock existing tracks - need two mocks because verifyPlaylistOwnership also calls select
-        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership but overridden by .single()
+        // Mock select for existing tracks
+        // First call is from verifyPlaylistOwnership (result ignored)
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null });
+        // Second call is from our new logic - return all tracks as existing
         mockSupabase.mockSelect.mockResolvedValueOnce({
-            data: [
-                { track_id: 101 },
-                { track_id: 102 },
-                { track_id: 103 },
-            ],
+            data: [{ track_id: 101 }, { track_id: 102 }, { track_id: 103 }],
             error: null,
         });
 
-        // Mock update calls
-        mockSupabase.mockUpdate.mockResolvedValue({
+        // Mock upsert
+        mockSupabase.mockUpsert.mockResolvedValue({
             error: null,
         });
 
@@ -325,5 +323,56 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(response.status).toBe(500);
         expect(data.error).toBe('Failed to update order completely');
         expect(data.failed_tracks).toEqual([102, 101]);
+    });
+
+    it('should ignore tracks not in the playlist', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock select for existing tracks
+        // First call is from verifyPlaylistOwnership (.select('id')) - result ignored
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: [], error: null });
+        // Second call is from our new logic (.select('track_id')) - result used
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [{ track_id: 101 }, { track_id: 102 }],
+            error: null,
+        });
+
+        // Mock upsert
+        mockSupabase.mockUpsert.mockResolvedValue({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            // 999 is unknown (not in mockSelect response)
+            body: JSON.stringify({ tracks: [101, 999, 102] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+
+        // Expect 1 upsert with filtered data
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledTimes(1);
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith(
+            [
+                { playlist_id: 'playlist-1', track_id: 101, position: 0 },
+                // 999 skipped
+                { playlist_id: 'playlist-1', track_id: 102, position: 2 },
+            ],
+            { onConflict: 'playlist_id,track_id' }
+        );
     });
 });
