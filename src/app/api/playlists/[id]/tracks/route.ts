@@ -179,27 +179,35 @@ export async function PATCH(
     }
 
     // 2. Filter input to include only tracks that are currently in the playlist
-    const validTrackIds = new Set(existingTracks?.map((t) => t.track_id) || []);
-    const upsertData = numericTracks
-        .filter((trackId) => validTrackIds.has(trackId))
-        .map((trackId, index) => ({
-            playlist_id: id,
-            track_id: trackId,
-            position: index,
-        }));
+    const validTrackIds = new Set(existingTracks?.map((t) => Number(t.track_id)) || []);
+    const updateData = numericTracks
+        .map((trackId, originalIndex) => ({
+            trackId,
+            originalIndex,
+        }))
+        .filter(({ trackId }) => validTrackIds.has(trackId));
 
-    if (upsertData.length === 0) {
+    if (updateData.length === 0) {
         return NextResponse.json({ success: true });
     }
 
-    // 3. Bulk upsert (update positions)
-    const { error: updateError } = await supabase
-        .from('playlist_tracks')
-        .upsert(upsertData, { onConflict: 'playlist_id,track_id' });
+    // 3. Update positions using individual updates to prevent race conditions
+    for (const { trackId, originalIndex } of updateData) {
+        const { error: updateError } = await supabase
+            .from('playlist_tracks')
+            .update({ position: originalIndex })
+            .eq('playlist_id', id)
+            .eq('track_id', trackId);
 
-    if (updateError) {
-        console.error('Failed to update track positions:', updateError);
-        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+        if (updateError) {
+            console.error('Failed to update track position:', {
+                playlist_id: id,
+                track_id: trackId,
+                position: originalIndex,
+                error: updateError,
+            });
+            return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+        }
     }
 
     return NextResponse.json({ success: true });
