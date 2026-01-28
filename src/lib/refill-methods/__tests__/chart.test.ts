@@ -13,7 +13,7 @@ import {
 function setupFetchMocks(
     fetchMock: MockInstance,
     appleRssResponse: unknown = mockAppleRssResponse,
-    itunesSearchResponses: Record<string, { results: { previewUrl: string }[] }> = mockItunesSearchResponses
+    itunesSearchResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = mockItunesSearchResponses
 ) {
     fetchMock.mockImplementation((url: string | URL) => {
         const urlString = url.toString();
@@ -27,12 +27,17 @@ function setupFetchMocks(
         }
         // iTunes Search API のモック
         if (urlString.includes('itunes.apple.com/lookup')) {
-            const trackId = new URL(urlString).searchParams.get('id');
-            if (trackId && itunesSearchResponses[trackId]) {
+            const idParam = new URL(urlString).searchParams.get('id');
+            if (idParam) {
+                const ids = idParam.split(',');
+                const results = ids.flatMap(id => {
+                    const response = itunesSearchResponses[id];
+                    return response ? response.results : [];
+                });
                 return Promise.resolve({
                     ok: true,
                     status: 200,
-                    json: async () => itunesSearchResponses[trackId],
+                    json: async () => ({ results }),
                 });
             }
             // トラックIDが見つからない場合は空のレスポンス
@@ -271,8 +276,8 @@ describe('fetchTracksFromChartWithRetry', () => {
             const tracks = await fetchTracksFromChartWithRetry(10, 3);
 
             expect(tracks).toHaveLength(3);
-            // Apple RSS API 1回 + iTunes Search API 3回（各トラック） = 4回
-            expect(fetchMock).toHaveBeenCalledTimes(4);
+            // Apple RSS API 1回 + iTunes Search API 1回（一括） = 2回
+            expect(fetchMock).toHaveBeenCalledTimes(2);
         });
 
         it('should retry on failure and succeed', async () => {
@@ -293,12 +298,17 @@ describe('fetchTracksFromChartWithRetry', () => {
                 }
                 // iTunes Search API のモック
                 if (urlString.includes('itunes.apple.com/lookup')) {
-                    const trackId = new URL(urlString).searchParams.get('id');
-                    if (trackId && mockItunesSearchResponses[trackId]) {
+                    const idParam = new URL(urlString).searchParams.get('id');
+                    if (idParam) {
+                        const ids = idParam.split(',');
+                        const results = ids.flatMap(id => {
+                            const response = mockItunesSearchResponses[id];
+                            return response ? response.results : [];
+                        });
                         return Promise.resolve({
                             ok: true,
                             status: 200,
-                            json: async () => mockItunesSearchResponses[trackId],
+                            json: async () => ({ results }),
                         } as Response);
                     }
                     return Promise.resolve({
@@ -370,12 +380,17 @@ describe('fetchTracksFromChartWithRetry', () => {
                 }
                 // iTunes Search API のモック
                 if (urlString.includes('itunes.apple.com/lookup')) {
-                    const trackId = new URL(urlString).searchParams.get('id');
-                    if (trackId && mockItunesSearchResponses[trackId]) {
+                    const idParam = new URL(urlString).searchParams.get('id');
+                    if (idParam) {
+                        const ids = idParam.split(',');
+                        const results = ids.flatMap(id => {
+                            const response = mockItunesSearchResponses[id];
+                            return response ? response.results : [];
+                        });
                         return Promise.resolve({
                             ok: true,
                             status: 200,
-                            json: async () => mockItunesSearchResponses[trackId],
+                            json: async () => ({ results }),
                         } as Response);
                     }
                     return Promise.resolve({
