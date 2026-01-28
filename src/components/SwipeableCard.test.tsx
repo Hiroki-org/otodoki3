@@ -6,7 +6,7 @@ import { SwipeableCard, SwipeableCardRef } from "./SwipeableCard";
 
 const mockTrack = {
   type: "track" as const,
-  track_id: "track-1",
+  track_id: 12345,
   track_name: "Test Track",
   artist_name: "Test Artist",
   preview_url: "https://example.com/preview.mp3",

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parseJsonResponse } from "./utils";
 
 describe("parseJsonResponse", () => {
-  it("正常系: Valid JSON response returns parsed data", async () => {
+  it("正常系: 正しいJSONレスポンスがパースされる", async () => {
     const mockData = { message: "success", data: [1, 2, 3] };
     const mockResponse = {
       headers: new Map([["content-type", "application/json"]]),
@@ -15,7 +15,7 @@ describe("parseJsonResponse", () => {
     expect(mockResponse.json).toHaveBeenCalled();
   });
 
-  it("異常系: Non-JSON content type throws error", async () => {
+  it("異常系: JSON以外のContent-Typeの場合はエラーを投げる", async () => {
     const mockText = "<html><body>Error</body></html>";
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -35,7 +35,7 @@ describe("parseJsonResponse", () => {
     consoleSpy.mockRestore();
   });
 
-  it("異常系: Missing content type throws error", async () => {
+  it("異常系: Content-Typeが存在しない場合はエラーを投げる", async () => {
     const mockText = "Some text response";
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
