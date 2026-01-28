@@ -144,7 +144,7 @@ export async function PATCH(
     const body = await request.json();
     const { tracks } = body; // Expecting array of track_ids in the new order
 
-    if (!tracks || !Array.isArray(tracks)) {
+    if (!tracks || !Array.isArray(tracks) || tracks.length === 0) {
         return NextResponse.json({ error: 'Tracks array is required' }, { status: 400 });
     }
 
@@ -165,19 +165,51 @@ export async function PATCH(
         return NextResponse.json({ error: 'Playlist not found' }, { status: 404 });
     }
 
-    // Update positions
-    const upsertData = numericTracks.map((trackId, index) => ({
-        playlist_id: id,
-        track_id: trackId,
-        position: index,
-    }));
-
-    const { error } = await supabase
+    // Get existing tracks in the playlist
+    const { data: existingTracks, error: fetchError } = await supabase
         .from('playlist_tracks')
-        .upsert(upsertData, { onConflict: 'playlist_id,track_id' });
+        .select('track_id')
+        .eq('playlist_id', id);
 
-    if (error) {
-        console.error('Failed to update track positions:', error);
+    if (fetchError) {
+        console.error('Failed to fetch existing tracks:', fetchError);
+        return NextResponse.json({ error: 'Failed to fetch playlist tracks' }, { status: 500 });
+    }
+
+    const existingTrackIds = new Set(existingTracks?.map(t => t.track_id) ?? []);
+
+    // Validate that all provided track IDs exist in the playlist
+    const invalidTracks = numericTracks.filter(trackId => !existingTrackIds.has(trackId));
+    if (invalidTracks.length > 0) {
+        return NextResponse.json({ 
+            error: 'Some tracks are not in the playlist',
+            invalid_tracks: invalidTracks
+        }, { status: 400 });
+    }
+
+    // Validate that all existing tracks are included in the reorder request
+    if (numericTracks.length !== existingTrackIds.size) {
+        return NextResponse.json({ 
+            error: 'All tracks in the playlist must be included in the reorder request',
+            expected_count: existingTrackIds.size,
+            provided_count: numericTracks.length
+        }, { status: 400 });
+    }
+
+    // Update positions using individual update operations
+    const updatePromises = numericTracks.map((trackId, index) =>
+        supabase
+            .from('playlist_tracks')
+            .update({ position: index })
+            .eq('playlist_id', id)
+            .eq('track_id', trackId)
+    );
+
+    const results = await Promise.all(updatePromises);
+    const errors = results.filter(r => r.error);
+
+    if (errors.length > 0) {
+        console.error('Failed to update track positions:', errors);
         return NextResponse.json({ error: 'Failed to update order completely' }, { status: 500 });
     }
 

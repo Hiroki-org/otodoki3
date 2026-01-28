@@ -114,7 +114,7 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
     });
 
-    it('should reorder tracks using single upsert (optimized)', async () => {
+    it('should reorder tracks successfully', async () => {
         mockSupabase.auth.getUser.mockResolvedValue({
             data: { user: mockAuthenticatedUser },
             error: null,
@@ -126,14 +126,25 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock upsert
-        mockSupabase.mockUpsert.mockResolvedValue({
+        // Mock existing tracks - need two mocks because verifyPlaylistOwnership also calls select
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership but overridden by .single()
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [
+                { track_id: 101 },
+                { track_id: 102 },
+                { track_id: 103 },
+            ],
+            error: null,
+        });
+
+        // Mock update calls
+        mockSupabase.mockUpdate.mockResolvedValue({
             error: null,
         });
 
         const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
             method: 'PATCH',
-            body: JSON.stringify({ tracks: [101, 102, 103] }),
+            body: JSON.stringify({ tracks: [103, 101, 102] }),
         });
 
         const params = Promise.resolve({ id: 'playlist-1' });
@@ -142,17 +153,140 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
 
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
-        // Expect 1 upsert
-        expect(mockSupabase.mockUpsert).toHaveBeenCalledTimes(1);
-        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith(
-            [
-                { playlist_id: 'playlist-1', track_id: 101, position: 0 },
-                { playlist_id: 'playlist-1', track_id: 102, position: 1 },
-                { playlist_id: 'playlist-1', track_id: 103, position: 2 },
+        // Expect 3 update calls (one per track)
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return 400 when tracks array is empty', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(data.error).toBe('Tracks array is required');
+    });
+
+    it('should return 400 when trying to reorder tracks not in playlist', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock existing tracks (has 101, 102)
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [
+                { track_id: 101 },
+                { track_id: 102 },
             ],
-            { onConflict: 'playlist_id,track_id' }
-        );
-        // Ensure no update calls
-        expect(mockSupabase.mockUpdate).not.toHaveBeenCalled();
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [101, 102, 999] }), // 999 not in playlist
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(data.error).toBe('Some tracks are not in the playlist');
+        expect(data.invalid_tracks).toContain(999);
+    });
+
+    it('should return 400 when not all tracks are included in reorder', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock existing tracks (has 101, 102, 103)
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [
+                { track_id: 101 },
+                { track_id: 102 },
+                { track_id: 103 },
+            ],
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [101, 102] }), // Missing track 103
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(data.error).toBe('All tracks in the playlist must be included in the reorder request');
+        expect(data.expected_count).toBe(3);
+        expect(data.provided_count).toBe(2);
+    });
+
+    it('should return 500 when update fails', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock existing tracks
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [
+                { track_id: 101 },
+                { track_id: 102 },
+            ],
+            error: null,
+        });
+
+        // Mock update to fail
+        mockSupabase.mockUpdate.mockResolvedValue({
+            error: { message: 'Database error' },
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [102, 101] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(data.error).toBe('Failed to update order completely');
     });
 });
