@@ -75,12 +75,13 @@ const fetchWithRetry = async (
  *
  * @param tracks - 表示するトラックの配列（各要素は Track）。チュートリアルカードとともに初期スタックを構成します。
  * @param mode - 'discover' (デフォルト) または 'playlist'。プレイリストモードでは補充なし・チュートリアルなし。
- * @param sourcePlaylist - プレイリストモードで、元のプレイリストID（'likes' or 'dislikes'）。TODO: 将来のプレイリスト間移動機能で使用予定。
+ * @param sourcePlaylist - プレイリストモードで、元のプレイリストID（'likes', 'dislikes' またはカスタムプレイリストID）。カスタムプレイリストの場合は左スワイプでトラック削除を行います。
  * @returns コンポーネントのレンダリング結果（React 要素）
  */
 export function TrackCardStack({
   tracks,
   mode = "discover",
+  sourcePlaylist,
 }: {
   tracks: Track[];
   mode?: "discover" | "playlist";
@@ -273,24 +274,49 @@ export function TrackCardStack({
       // Dislike/Skip flow: await, show progress and retry up to 3 attempts total (initial + 2 retries)
       console.log("Skip", track.track_id);
       const id = String(track.track_id);
+      const isCustomPlaylist =
+        sourcePlaylist &&
+        sourcePlaylist !== "likes" &&
+        sourcePlaylist !== "dislikes";
+
       (async () => {
         setActionInProgress(true);
         try {
           const pending = toast.push(
-            { type: "info", message: "スキップを保存しています..." },
+            {
+              type: "info",
+              message: isCustomPlaylist
+                ? "プレイリストから削除しています..."
+                : "スキップを保存しています...",
+            },
             10000
           );
-          await fetchWithRetry(
-            "/api/tracks/dislike",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ track_id: id }),
-            },
-            3,
-            5000,
-            300
-          );
+
+          if (isCustomPlaylist) {
+            await fetchWithRetry(
+              `/api/playlists/${sourcePlaylist}/tracks`,
+              {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ track_id: id }),
+              },
+              3,
+              5000,
+              300
+            );
+          } else {
+            await fetchWithRetry(
+              "/api/tracks/dislike",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ track_id: id }),
+              },
+              3,
+              5000,
+              300
+            );
+          }
           toast.dismiss(pending);
 
           // Dislike 成功後、ライブラリ側のカウント等を更新
@@ -303,7 +329,9 @@ export function TrackCardStack({
           });
           toast.push({
             type: "error",
-            message: "スキップの保存に失敗しました",
+            message: isCustomPlaylist
+              ? "プレイリストからの削除に失敗しました"
+              : "スキップの保存に失敗しました",
           });
           // rollback on final failure
           setStack((prev) => [track, ...prev]);
