@@ -55,7 +55,7 @@ describe('TrackCardStack', () => {
     vi.resetAllMocks();
   });
 
-  it('does not log when tracks are refilled (Optimized)', () => {
+  it('does not log any messages to console.log during refill', () => {
     let capturedOnRefill: ((newTracks: CardItem[]) => void) | undefined;
 
     vi.mocked(useAutoRefillModule.useAutoRefill).mockImplementation(
@@ -66,7 +66,13 @@ describe('TrackCardStack', () => {
     );
 
     const tracks: Track[] = [
-      { track_id: 1, name: 'Track 1' } as any,
+      {
+        type: 'track',
+        track_id: 1,
+        track_name: 'Track 1',
+        artist_name: 'Artist 1',
+        preview_url: 'http://example.com/1.mp3',
+      },
     ];
 
     render(
@@ -78,14 +84,21 @@ describe('TrackCardStack', () => {
     expect(capturedOnRefill).toBeDefined();
 
     // Trigger refill
-    const newTracks: Track[] = [{ track_id: 2, name: 'Track 2' } as any];
+    const newTracks: CardItem[] = [
+      {
+        type: 'track',
+        track_id: 2,
+        track_name: 'Track 2',
+        artist_name: 'Artist 2',
+        preview_url: 'http://example.com/2.mp3',
+      },
+    ];
+
     act(() => {
       capturedOnRefill!(newTracks);
     });
 
-    // Optimization expectation: log IS NOT called
-    expect(consoleLogSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('Added 1 unique tracks')
-    );
+    // Optimization expectation: log IS NOT called at all
+    expect(consoleLogSpy).not.toHaveBeenCalled();
   });
 });
