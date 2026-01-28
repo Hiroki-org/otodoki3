@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from './route';
+import { POST, PATCH } from './route';
 import { createMockSupabaseClient, mockAuthenticatedUser } from '@/test/api-test-utils';
 import { NextRequest } from 'next/server';
 
@@ -101,5 +101,58 @@ describe('POST /api/playlists/[id]/tracks', () => {
 
         expect(response.status).toBe(409);
         expect(data.error).toBe('Track already in playlist');
+    });
+});
+
+describe('PATCH /api/playlists/[id]/tracks', () => {
+    let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockSupabase = createMockSupabaseClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
+    });
+
+    it('should reorder tracks using single upsert (optimized)', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock upsert
+        mockSupabase.mockUpsert.mockResolvedValue({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [101, 102, 103] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        // Expect 1 upsert
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledTimes(1);
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith(
+            [
+                { playlist_id: 'playlist-1', track_id: 101, position: 0 },
+                { playlist_id: 'playlist-1', track_id: 102, position: 1 },
+                { playlist_id: 'playlist-1', track_id: 103, position: 2 },
+            ],
+            { onConflict: 'playlist_id,track_id' }
+        );
+        // Ensure no update calls
+        expect(mockSupabase.mockUpdate).not.toHaveBeenCalled();
     });
 });

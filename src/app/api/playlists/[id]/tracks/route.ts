@@ -166,19 +166,18 @@ export async function PATCH(
     }
 
     // Update positions
-    const updates = numericTracks.map((trackId, index) =>
-        supabase
-            .from('playlist_tracks')
-            .update({ position: index })
-            .eq('playlist_id', id)
-            .eq('track_id', trackId)
-    );
+    const upsertData = numericTracks.map((trackId, index) => ({
+        playlist_id: id,
+        track_id: trackId,
+        position: index,
+    }));
 
-    const results = await Promise.all(updates);
-    const errors = results.filter(r => r.error);
+    const { error } = await supabase
+        .from('playlist_tracks')
+        .upsert(upsertData, { onConflict: 'playlist_id,track_id' });
 
-    if (errors.length > 0) {
-        console.error('Failed to update some track positions:', errors);
+    if (error) {
+        console.error('Failed to update track positions:', error);
         return NextResponse.json({ error: 'Failed to update order completely' }, { status: 500 });
     }
 
