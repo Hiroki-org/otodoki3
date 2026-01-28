@@ -205,6 +205,8 @@ export async function PATCH(
     }
 
     // Update positions using individual update operations
+    // Note: This uses Promise.all for concurrent updates rather than a transaction.
+    // If atomicity is critical, consider using a Supabase RPC function or transaction.
     const updatePromises = numericTracks.map((trackId, index) =>
         supabase
             .from('playlist_tracks')
