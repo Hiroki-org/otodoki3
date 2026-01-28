@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from './route';
+import { POST, PATCH } from './route';
 import { createMockSupabaseClient, mockAuthenticatedUser } from '@/test/api-test-utils';
 import { NextRequest } from 'next/server';
 
@@ -101,5 +101,107 @@ describe('POST /api/playlists/[id]/tracks', () => {
 
         expect(response.status).toBe(409);
         expect(data.error).toBe('Track already in playlist');
+    });
+});
+
+describe('PATCH /api/playlists/[id]/tracks', () => {
+    let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockSupabase = createMockSupabaseClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
+    });
+
+    it('should reorder tracks successfully', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock select calls
+        // 1. verifyPlaylistOwnership calls select('id')
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
+
+        // 2. Fetch existing tracks
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [{ track_id: 12345 }, { track_id: 67890 }],
+            error: null,
+        });
+
+        // Mock upsert
+        mockSupabase.mockUpsert.mockResolvedValueOnce({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: ['12345', '67890'] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+
+        // Verify upsert was called with correct data
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith([
+            { playlist_id: 'playlist-1', track_id: 12345, position: 0 },
+            { playlist_id: 'playlist-1', track_id: 67890, position: 1 }
+        ], { onConflict: 'playlist_id,track_id' });
+    });
+
+    it('should ignore unknown tracks during reorder', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock select calls
+        // 1. verifyPlaylistOwnership calls select('id')
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
+
+        // 2. Fetch existing tracks (only 12345 exists)
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [{ track_id: 12345 }],
+            error: null,
+        });
+
+        // Mock upsert
+        mockSupabase.mockUpsert.mockResolvedValueOnce({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: ['12345', '99999'] }), // 99999 is unknown
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+
+        // Verify upsert was called ONLY with 12345
+        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith([
+            { playlist_id: 'playlist-1', track_id: 12345, position: 0 }
+        ], { onConflict: 'playlist_id,track_id' });
     });
 });
