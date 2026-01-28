@@ -215,7 +215,7 @@ export async function PATCH(
 
     try {
         await Promise.all(updatePromises);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
     }
 
