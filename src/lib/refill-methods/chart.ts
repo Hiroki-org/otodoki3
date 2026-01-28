@@ -40,9 +40,17 @@ interface ItunesSearchResponse {
 const ITUNES_LOOKUP_CHUNK_SIZE = 50;
 
 /**
+ * iTunes API のバッチリクエストに使用するチャンクサイズ
+ * iTunes Lookup API は URL の長さ制限があるため、一度に送信できるトラックIDの数を制限する
+ */
+const ITUNES_API_CHUNK_SIZE = 50;
+
+/**
  * iTunes Search API から previewUrl を一括取得
- * @param trackIds トラックIDの配列
- * @param timeoutMs チャンクごとのタイムアウト（ミリ秒、デフォルト: 3000）
+ * @param trackIds 取得するトラックIDの配列
+ * @param timeoutMs タイムアウト（ミリ秒）。このタイムアウトは各チャンクごとに適用されるため、
+ *                  複数チャンクがある場合は総実行時間が timeoutMs * チャンク数 になる可能性があります。
+ * @returns トラックIDとpreviewURLのマップ
  */
 async function getPreviewUrlsFromItunesApi(
     trackIds: string[],
