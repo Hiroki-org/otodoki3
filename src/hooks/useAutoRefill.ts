@@ -54,7 +54,6 @@ export function useAutoRefill(
 
             if (newTracks.length > 0) {
                 onRefill(newTracks);
-                console.log(`Refilled ${newTracks.length} tracks`);
                 // 成功時は即座にリセット
                 hasRequestedRef.current = false;
             } else {
