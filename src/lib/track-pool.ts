@@ -3,6 +3,23 @@ import type { Database, Json } from '@/types/database';
 import type { Track } from '@/types/track-pool';
 
 /**
+ * track_pool テーブルから取得するカラムのリスト
+ * Track インターフェースに対応するカラムのみを選択
+ */
+export const TRACK_POOL_COLUMNS = [
+    'track_id',
+    'track_name',
+    'artist_name',
+    'collection_name',
+    'preview_url',
+    'artwork_url',
+    'track_view_url',
+    'genre',
+    'release_date',
+    'metadata',
+] as const;
+
+/**
  * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
  */
 export function validateMetadata(metadata: unknown): Database['public']['Tables']['track_pool']['Insert']['metadata'] | null {
@@ -28,6 +45,19 @@ const TRACK_POOL_MAX_SIZE = parseInt(
     10
 );
 
+export const TRACK_POOL_COLUMNS = [
+    'track_id',
+    'track_name',
+    'artist_name',
+    'collection_name',
+    'preview_url',
+    'artwork_url',
+    'track_view_url',
+    'genre',
+    'release_date',
+    'metadata',
+] as const;
+
 /**
  * track_poolテーブルから指定数の楽曲を取得
  * @param count 取得する楽曲数
@@ -37,7 +67,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
     try {
         const { data, error } = await supabase
             .from('track_pool')
-            .select('*')
+            .select(TRACK_POOL_COLUMNS.join(','))
             .order('fetched_at', { ascending: true })
             .limit(count);
 

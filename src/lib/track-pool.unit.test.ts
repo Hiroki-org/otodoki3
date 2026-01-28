@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool } from '@/lib/track-pool';
+import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool, TRACK_POOL_COLUMNS } from '@/lib/track-pool';
 
 // モックの定義
 const mocks = vi.hoisted(() => ({
@@ -50,7 +50,18 @@ describe('src/lib/track-pool.ts', () => {
       const result = await getTracksFromPool(1);
 
       expect(mocks.from).toHaveBeenCalledWith('track_pool');
-      expect(mocks.select).toHaveBeenCalledWith('*');
+      
+      // Verify that explicit column selection is used (not wildcard)
+      const selectArg = (mocks.select as any).mock.calls[0][0];
+      expect(selectArg).not.toContain('*');
+      
+      // Verify all required columns are selected and no extra columns
+      const actualColumns = selectArg.split(',').map((c: string) => c.trim());
+      expect(actualColumns).toHaveLength(TRACK_POOL_COLUMNS.length);
+      TRACK_POOL_COLUMNS.forEach((col) => {
+        expect(actualColumns).toContain(col);
+      });
+      
       expect(orderMock).toHaveBeenCalledWith('fetched_at', { ascending: true });
       expect(limitMock).toHaveBeenCalledWith(1);
 
