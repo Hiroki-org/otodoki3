@@ -128,11 +128,6 @@ export function TrackCardStack({
         return true; // チュートリアルカードはそのまま通す
       });
 
-      console.log(
-        `Added ${uniqueNewTracks.length} unique tracks (filtered ${
-          newTracks.length - uniqueNewTracks.length
-        } duplicates)`
-      );
 
       return [...prev, ...uniqueNewTracks];
     });
