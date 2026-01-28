@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool } from '@/lib/track-pool';
+import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool, TRACK_POOL_COLUMNS } from '@/lib/track-pool';
 
 // モックの定義
 const mocks = vi.hoisted(() => ({
@@ -50,7 +50,7 @@ describe('src/lib/track-pool.ts', () => {
       const result = await getTracksFromPool(1);
 
       expect(mocks.from).toHaveBeenCalledWith('track_pool');
-      expect(mocks.select).toHaveBeenCalledWith('track_id, track_name, artist_name, collection_name, preview_url, artwork_url, track_view_url, genre, release_date, metadata');
+      expect(mocks.select).toHaveBeenCalledWith(TRACK_POOL_COLUMNS.join(','));
       expect(orderMock).toHaveBeenCalledWith('fetched_at', { ascending: true });
       expect(limitMock).toHaveBeenCalledWith(1);
 
