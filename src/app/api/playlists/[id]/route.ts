@@ -20,6 +20,7 @@ export async function GET(
             .select(`
         *,
         track:track_pool(
+          id,
           track_id,
           track_name,
           artist_name,
@@ -60,6 +61,7 @@ export async function GET(
         .select(`
       *,
       track:track_pool(
+        id,
         track_id,
         track_name,
         artist_name,
@@ -83,7 +85,7 @@ export async function GET(
         playlist_track_id: t.id,
         position: t.position,
         added_at: t.added_at
-    })).filter(t => t.track_id !== undefined) || []; // Filter out any potential null joins
+    })).filter(t => t.id !== undefined) || []; // Filter out any potential null joins
 
     return NextResponse.json({ playlist, tracks: formattedTracks });
 }
