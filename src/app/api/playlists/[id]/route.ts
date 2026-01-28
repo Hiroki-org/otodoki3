@@ -19,7 +19,17 @@ export async function GET(
             .from(table)
             .select(`
         *,
-        track:track_pool(*)
+        track:track_pool(
+          track_id,
+          track_name,
+          artist_name,
+          collection_name,
+          preview_url,
+          artwork_url,
+          track_view_url,
+          genre,
+          release_date
+        )
       `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
@@ -49,7 +59,17 @@ export async function GET(
         .from('playlist_tracks')
         .select(`
       *,
-      track:track_pool(*)
+      track:track_pool(
+        track_id,
+        track_name,
+        artist_name,
+        collection_name,
+        preview_url,
+        artwork_url,
+        track_view_url,
+        genre,
+        release_date
+      )
     `)
         .eq('playlist_id', id)
         .order('position', { ascending: true });
