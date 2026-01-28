@@ -178,6 +178,14 @@ export async function PATCH(
 
     const existingTrackIds = new Set(existingTracks?.map(t => t.track_id) ?? []);
 
+    // Check for duplicate track IDs in the request
+    const uniqueTrackIds = new Set(numericTracks);
+    if (uniqueTrackIds.size !== numericTracks.length) {
+        return NextResponse.json({ 
+            error: 'Duplicate track IDs are not allowed in reorder request'
+        }, { status: 400 });
+    }
+
     // Validate that all provided track IDs exist in the playlist
     const invalidTracks = numericTracks.filter(trackId => !existingTrackIds.has(trackId));
     if (invalidTracks.length > 0) {
@@ -206,11 +214,16 @@ export async function PATCH(
     );
 
     const results = await Promise.all(updatePromises);
-    const errors = results.filter(r => r.error);
+    const failedUpdates = results
+        .map((r, index) => ({ result: r, trackId: numericTracks[index] }))
+        .filter(({ result }) => result.error);
 
-    if (errors.length > 0) {
-        console.error('Failed to update track positions:', errors);
-        return NextResponse.json({ error: 'Failed to update order completely' }, { status: 500 });
+    if (failedUpdates.length > 0) {
+        console.error('Failed to update track positions:', failedUpdates.map(f => f.result.error));
+        return NextResponse.json({ 
+            error: 'Failed to update order completely',
+            failed_tracks: failedUpdates.map(f => f.trackId)
+        }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

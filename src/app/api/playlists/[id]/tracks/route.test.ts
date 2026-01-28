@@ -176,6 +176,42 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(data.error).toBe('Tracks array is required');
     });
 
+    it('should return 400 when tracks array contains duplicates', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock existing tracks
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null }); // Consumed by verifyPlaylistOwnership
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [
+                { track_id: 101 },
+                { track_id: 102 },
+                { track_id: 103 },
+            ],
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [101, 101, 102] }), // 101 is duplicated
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(data.error).toBe('Duplicate track IDs are not allowed in reorder request');
+    });
+
     it('should return 400 when trying to reorder tracks not in playlist', async () => {
         mockSupabase.auth.getUser.mockResolvedValue({
             data: { user: mockAuthenticatedUser },
@@ -288,5 +324,6 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
 
         expect(response.status).toBe(500);
         expect(data.error).toBe('Failed to update order completely');
+        expect(data.failed_tracks).toEqual([102, 101]);
     });
 });
