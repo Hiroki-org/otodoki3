@@ -192,22 +192,31 @@ export async function PATCH(
     }
 
     // 3. Update positions using individual updates to prevent race conditions
-    for (const { trackId, originalIndex } of updateData) {
-        const { error: updateError } = await supabase
+    // Execute updates in parallel for better performance
+    const updatePromises = updateData.map(({ trackId, originalIndex }) =>
+        supabase
             .from('playlist_tracks')
             .update({ position: originalIndex })
             .eq('playlist_id', id)
-            .eq('track_id', trackId);
+            .eq('track_id', trackId)
+            .then((result) => {
+                if (result.error) {
+                    console.error('Failed to update track position:', {
+                        playlist_id: id,
+                        track_id: trackId,
+                        position: originalIndex,
+                        error: result.error,
+                    });
+                    throw result.error;
+                }
+                return result;
+            })
+    );
 
-        if (updateError) {
-            console.error('Failed to update track position:', {
-                playlist_id: id,
-                track_id: trackId,
-                position: originalIndex,
-                error: updateError,
-            });
-            return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
-        }
+    try {
+        await Promise.all(updatePromises);
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

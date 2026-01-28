@@ -72,9 +72,17 @@ describe('Performance Benchmark: Playlist Reorder', () => {
     const tracks = Array.from({ length: 50 }, (_, i) => i + 1);
     const playlistId = 'playlist-123';
 
-    it('Compare Loop vs Bulk Upsert', async () => {
-        // --- Baseline: Loop ---
-        const startLoop = performance.now();
+    it('Compare parallel updates vs bulk upsert', async () => {
+        // --- Current Implementation: Parallel Individual Updates ---
+        const startParallel = performance.now();
+        // Step 1: Fetch existing (simulated)
+        await mockSupabase
+            .from('playlist_tracks')
+            .select('track_id')
+            .eq('playlist_id', playlistId)
+            .in('track_id', tracks);
+
+        // Step 2: Parallel updates
         const updates = tracks.map((trackId, index) =>
             mockSupabase
                 .from('playlist_tracks')
@@ -83,10 +91,10 @@ describe('Performance Benchmark: Playlist Reorder', () => {
                 .eq('track_id', trackId)
         );
         await Promise.all(updates);
-        const endLoop = performance.now();
-        const timeLoop = endLoop - startLoop;
+        const endParallel = performance.now();
+        const timeParallel = endParallel - startParallel;
 
-        // --- Optimization: Bulk Upsert ---
+        // --- Alternative (Race Condition Risk): Bulk Upsert ---
         const startBulk = performance.now();
         // Step 1: Fetch existing (simulated)
         await mockSupabase
@@ -110,12 +118,16 @@ describe('Performance Benchmark: Playlist Reorder', () => {
 ========================================
 PERFORMANCE BENCHMARK RESULTS (N=50 tracks)
 ----------------------------------------
-Baseline (N Updates): ${timeLoop.toFixed(2)} ms
-Optimization (Select + Upsert): ${timeBulk.toFixed(2)} ms
- Improvement: ${(timeLoop / timeBulk).toFixed(1)}x faster
+Current (Select + Parallel Updates): ${timeParallel.toFixed(2)} ms
+Alternative (Select + Upsert): ${timeBulk.toFixed(2)} ms
+ Difference: ${(timeParallel / timeBulk).toFixed(1)}x ${timeBulk < timeParallel ? 'faster with upsert' : 'slower with upsert'}
+----------------------------------------
+Note: Upsert has a race condition risk where deleted
+tracks could be re-inserted. Parallel updates are safer.
 ========================================
         `);
 
-        expect(timeBulk).toBeLessThan(timeLoop);
+        // Both should be reasonably fast, we're just documenting the tradeoff
+        expect(timeParallel).toBeLessThan(500); // Should complete in reasonable time
     });
 });
