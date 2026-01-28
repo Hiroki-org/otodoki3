@@ -38,7 +38,17 @@ interface ItunesSearchResponse {
 }
 
 /**
+ * iTunes API のバッチリクエストに使用するチャンクサイズ
+ * iTunes Lookup API は URL の長さ制限があるため、一度に送信できるトラックIDの数を制限する
+ */
+const ITUNES_API_CHUNK_SIZE = 50;
+
+/**
  * iTunes Search API から previewUrl を一括取得
+ * @param trackIds 取得するトラックIDの配列
+ * @param timeoutMs タイムアウト（ミリ秒）。このタイムアウトは各チャンクごとに適用されるため、
+ *                  複数チャンクがある場合は総実行時間が timeoutMs * チャンク数 になる可能性があります。
+ * @returns トラックIDとpreviewURLのマップ
  */
 async function getPreviewUrlsFromItunesApi(
     trackIds: string[],
@@ -49,10 +59,8 @@ async function getPreviewUrlsFromItunesApi(
         return previewUrlMap;
     }
 
-    const CHUNK_SIZE = 50;
-
-    for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
-        const chunk = trackIds.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < trackIds.length; i += ITUNES_API_CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + ITUNES_API_CHUNK_SIZE);
         const ids = chunk.join(',');
 
         const controller = new AbortController();
@@ -143,8 +151,10 @@ export async function fetchTracksFromChart(
         // previewUrl は iTunes Search API から別途取得する
         const tracks: Track[] = [];
 
-        // 全トラックIDを収集して一括取得
-        const trackIds = results.map(item => item.id).filter(id => id);
+        // 全トラックIDを収集して一括取得（数値として有効なIDのみを送る）
+        const trackIds = results
+            .map(item => item.id)
+            .filter(id => id && Number.isFinite(Number(id)));
         const previewUrlMap = await getPreviewUrlsFromItunesApi(trackIds);
 
         for (const item of results) {
