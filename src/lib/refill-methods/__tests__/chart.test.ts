@@ -246,6 +246,151 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(3);
         });
     });
+
+    describe('バッチ処理とチャンキング', () => {
+        it('should make a single iTunes API call for tracks <= 50', async () => {
+            setupFetchMocks(fetchMock);
+
+            await fetchTracksFromChart(3);
+
+            // Apple RSS API 1回 + iTunes Search API 1回（一括） = 2回
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            
+            // iTunes API が1回だけ呼ばれたことを確認
+            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+                call[0].toString().includes('itunes.apple.com/lookup')
+            );
+            expect(itunesApiCalls).toHaveLength(1);
+        });
+
+        it('should split requests into multiple chunks for tracks > 50', async () => {
+            // 75個のトラックを生成（50 + 25 = 2チャンク）
+            const largeRssResponse = {
+                feed: {
+                    results: Array.from({ length: 75 }, (_, i) => ({
+                        id: String(3000 + i),
+                        name: `チャート曲${i + 1}`,
+                        artistName: `アーティスト${i + 1}`,
+                        url: `https://example.com/chart${i + 1}`,
+                        artworkUrl100: `https://example.com/art${i + 1}.jpg`,
+                    })),
+                },
+            };
+
+            // iTunesレスポンスを生成
+            const largeItunesResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = {};
+            for (let i = 0; i < 75; i++) {
+                const trackId = 3000 + i;
+                largeItunesResponses[String(trackId)] = {
+                    results: [{ trackId, previewUrl: `https://audio-ssl.itunes.apple.com/preview${trackId}.m4a` }],
+                };
+            }
+
+            setupFetchMocks(fetchMock, largeRssResponse, largeItunesResponses);
+
+            const tracks = await fetchTracksFromChart(75);
+
+            // 全トラックが取得されたことを確認
+            expect(tracks).toHaveLength(75);
+
+            // iTunes API が2回呼ばれたことを確認（50個 + 25個のチャンク）
+            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+                call[0].toString().includes('itunes.apple.com/lookup')
+            );
+            expect(itunesApiCalls).toHaveLength(2);
+
+            // 最初のチャンクに50個のIDが含まれていることを確認
+            const firstCallUrl = new URL(itunesApiCalls[0][0].toString());
+            const firstCallIds = firstCallUrl.searchParams.get('id')?.split(',') ?? [];
+            expect(firstCallIds).toHaveLength(50);
+
+            // 2番目のチャンクに25個のIDが含まれていることを確認
+            const secondCallUrl = new URL(itunesApiCalls[1][0].toString());
+            const secondCallIds = secondCallUrl.searchParams.get('id')?.split(',') ?? [];
+            expect(secondCallIds).toHaveLength(25);
+        });
+
+        it('should handle exactly 100 tracks (2 full chunks)', async () => {
+            // 100個のトラックを生成（50 + 50 = 2チャンク）
+            const largeRssResponse = {
+                feed: {
+                    results: Array.from({ length: 100 }, (_, i) => ({
+                        id: String(4000 + i),
+                        name: `チャート曲${i + 1}`,
+                        artistName: `アーティスト${i + 1}`,
+                        url: `https://example.com/chart${i + 1}`,
+                        artworkUrl100: `https://example.com/art${i + 1}.jpg`,
+                    })),
+                },
+            };
+
+            const largeItunesResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = {};
+            for (let i = 0; i < 100; i++) {
+                const trackId = 4000 + i;
+                largeItunesResponses[String(trackId)] = {
+                    results: [{ trackId, previewUrl: `https://audio-ssl.itunes.apple.com/preview${trackId}.m4a` }],
+                };
+            }
+
+            setupFetchMocks(fetchMock, largeRssResponse, largeItunesResponses);
+
+            const tracks = await fetchTracksFromChart(100);
+
+            expect(tracks).toHaveLength(100);
+
+            // iTunes API が2回呼ばれたことを確認（50個 + 50個のチャンク）
+            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+                call[0].toString().includes('itunes.apple.com/lookup')
+            );
+            expect(itunesApiCalls).toHaveLength(2);
+
+            // 両方のチャンクが50個のIDを含むことを確認
+            const firstCallUrl = new URL(itunesApiCalls[0][0].toString());
+            const firstCallIds = firstCallUrl.searchParams.get('id')?.split(',') ?? [];
+            expect(firstCallIds).toHaveLength(50);
+
+            const secondCallUrl = new URL(itunesApiCalls[1][0].toString());
+            const secondCallIds = secondCallUrl.searchParams.get('id')?.split(',') ?? [];
+            expect(secondCallIds).toHaveLength(50);
+        });
+
+        it('should filter out invalid track IDs before batching', async () => {
+            const rssWithInvalidIds = {
+                feed: {
+                    results: [
+                        { id: '5001', name: '有効なトラック1', artistName: 'アーティスト1', url: 'https://example.com/1' },
+                        { id: 'invalid', name: '無効なトラック', artistName: 'アーティスト2', url: 'https://example.com/2' },
+                        { id: '5002', name: '有効なトラック2', artistName: 'アーティスト3', url: 'https://example.com/3' },
+                        { id: 'abc123', name: '無効なトラック2', artistName: 'アーティスト4', url: 'https://example.com/4' },
+                    ],
+                },
+            };
+
+            const validItunesResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = {
+                '5001': { results: [{ trackId: 5001, previewUrl: 'https://audio-ssl.itunes.apple.com/preview1.m4a' }] },
+                '5002': { results: [{ trackId: 5002, previewUrl: 'https://audio-ssl.itunes.apple.com/preview2.m4a' }] },
+            };
+
+            setupFetchMocks(fetchMock, rssWithInvalidIds, validItunesResponses);
+
+            const tracks = await fetchTracksFromChart(10);
+
+            // 有効なトラックのみが取得される
+            expect(tracks).toHaveLength(2);
+
+            // iTunes API が1回呼ばれ、有効なIDのみが送信されたことを確認
+            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+                call[0].toString().includes('itunes.apple.com/lookup')
+            );
+            expect(itunesApiCalls).toHaveLength(1);
+
+            const callUrl = new URL(itunesApiCalls[0][0].toString());
+            const callIds = callUrl.searchParams.get('id')?.split(',') ?? [];
+            expect(callIds).toEqual(['5001', '5002']);
+            expect(callIds).not.toContain('invalid');
+            expect(callIds).not.toContain('abc123');
+        });
+    });
 });
 
 describe('fetchTracksFromChartWithRetry', () => {
