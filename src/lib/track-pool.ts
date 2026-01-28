@@ -37,7 +37,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
     try {
         const { data, error } = await supabase
             .from('track_pool')
-            .select('*')
+            .select('track_id, track_name, artist_name, collection_name, preview_url, artwork_url, track_view_url, genre, release_date, metadata')
             .order('fetched_at', { ascending: true })
             .limit(count);
 
