@@ -55,8 +55,9 @@ describe('src/lib/track-pool.ts', () => {
       const selectArg = (mocks.select as any).mock.calls[0][0];
       expect(selectArg).not.toContain('*');
       
-      // Verify all required columns are selected
+      // Verify all required columns are selected and no extra columns
       const actualColumns = selectArg.split(',').map((c: string) => c.trim());
+      expect(actualColumns).toHaveLength(TRACK_POOL_COLUMNS.length);
       TRACK_POOL_COLUMNS.forEach((col) => {
         expect(actualColumns).toContain(col);
       });
