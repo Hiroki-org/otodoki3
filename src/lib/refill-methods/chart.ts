@@ -37,8 +37,12 @@ interface ItunesSearchResponse {
     results: ItunesSearchResult[];
 }
 
+const ITUNES_LOOKUP_CHUNK_SIZE = 50;
+
 /**
  * iTunes Search API から previewUrl を一括取得
+ * @param trackIds トラックIDの配列
+ * @param timeoutMs チャンクごとのタイムアウト（ミリ秒、デフォルト: 3000）
  */
 async function getPreviewUrlsFromItunesApi(
     trackIds: string[],
@@ -49,10 +53,8 @@ async function getPreviewUrlsFromItunesApi(
         return previewUrlMap;
     }
 
-    const CHUNK_SIZE = 50;
-
-    for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
-        const chunk = trackIds.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < trackIds.length; i += ITUNES_LOOKUP_CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + ITUNES_LOOKUP_CHUNK_SIZE);
         const ids = chunk.join(',');
 
         const controller = new AbortController();
@@ -143,8 +145,10 @@ export async function fetchTracksFromChart(
         // previewUrl は iTunes Search API から別途取得する
         const tracks: Track[] = [];
 
-        // 全トラックIDを収集して一括取得
-        const trackIds = results.map(item => item.id).filter(id => id);
+        // 全トラックIDを収集して一括取得（数値として有効なIDのみを送る）
+        const trackIds = results
+            .map(item => item.id)
+            .filter(id => id && Number.isFinite(Number(id)));
         const previewUrlMap = await getPreviewUrlsFromItunesApi(trackIds);
 
         for (const item of results) {
