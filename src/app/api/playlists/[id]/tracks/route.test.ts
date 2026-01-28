@@ -204,4 +204,38 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             { playlist_id: 'playlist-1', track_id: 12345, position: 0 }
         ], { onConflict: 'playlist_id,track_id' });
     });
+
+    it('should return 204 when no tracks to update', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock select calls
+        // 1. verifyPlaylistOwnership calls select('id')
+        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
+
+        // 2. Fetch existing tracks (none found)
+        mockSupabase.mockSelect.mockResolvedValueOnce({
+            data: [],
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: ['99999'] }), // 99999 is unknown
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+
+        expect(response.status).toBe(204);
+        expect(mockSupabase.mockUpsert).not.toHaveBeenCalled();
+    });
 });

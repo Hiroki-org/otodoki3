@@ -179,7 +179,7 @@ export async function PATCH(
     }
 
     // 2. Filter input to include only tracks that are currently in the playlist
-    const validTrackIds = new Set(existingTracks?.map((t) => t.track_id) || []);
+    const validTrackIds = new Set(existingTracks?.map((t) => Number(t.track_id)) || []);
     const upsertData = numericTracks
         .filter((trackId) => validTrackIds.has(trackId))
         .map((trackId, index) => ({
@@ -189,7 +189,7 @@ export async function PATCH(
         }));
 
     if (upsertData.length === 0) {
-        return NextResponse.json({ success: true });
+        return new NextResponse(null, { status: 204 });
     }
 
     // 3. Bulk upsert (update positions)
