@@ -1,16 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { shuffleByArtist } from "./shuffleByArtist";
 
 describe("shuffleByArtist", () => {
-  beforeEach(() => {
-    // テストの再現性のためにMath.randomをモック
-    vi.spyOn(Math, "random");
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it("空の配列を返す", () => {
     const result = shuffleByArtist([]);
     expect(result).toEqual([]);
@@ -62,6 +53,7 @@ describe("shuffleByArtist", () => {
 
   it("同じアーティストの曲が多すぎる場合も処理できる（完全な分散は保証しない）", () => {
     // 同じアーティストの曲が5曲、他が1曲ずつ
+    // この場合、Artist Aの曲が連続することは避けられない（5曲 > 残り2曲 + 1）
     const tracks = [
       { artist_name: "Artist A", track_name: "Track 1" },
       { artist_name: "Artist A", track_name: "Track 2" },
@@ -80,8 +72,20 @@ describe("shuffleByArtist", () => {
       expect(result).toContainEqual(track);
     }
 
-    // 関数がエラーなく完了することを確認（完全な分散は保証しない）
+    // 関数がエラーなく完了することを確認
     expect(result.length).toBe(tracks.length);
+
+    // 連続を最小化しようとしていることを確認
+    // Artist B と Artist C の曲が Artist A の曲の間に配置されているはず
+    let consecutiveCount = 0;
+    for (let i = 1; i < result.length; i++) {
+      if (result[i].artist_name === result[i - 1].artist_name) {
+        consecutiveCount++;
+      }
+    }
+    // 最悪でも連続は最小限に抑えられる（5曲中3曲が連続 = 2回の連続）
+    // ベストエフォートで連続を減らしている
+    expect(consecutiveCount).toBeLessThanOrEqual(3);
   });
 
   it("すべて同じアーティストの場合もエラーなく処理する", () => {

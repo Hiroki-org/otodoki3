@@ -14,9 +14,12 @@ function fisherYatesShuffle<T>(array: T[]): T[] {
  * 同じアーティストの曲が連続しないようにトラックをシャッフルする
  *
  * アルゴリズム:
- * 1. アーティストごとにグループ化
- * 2. 最も曲数の多いアーティストから順に配置
- * 3. 配置の際は既存のトラックの間に挿入し、連続を避ける
+ * 1. アーティストごとにグループ化し、各グループをシャッフル
+ * 2. ラウンドロビン方式でインターリーブ配置
+ * 3. 残りの連続を解消するためスワップによる修正フェーズを実行
+ *
+ * 注意: 同じアーティストの曲が全体の半分以上を占める場合、
+ * 完全に連続を避けることは不可能です。その場合はベストエフォートで処理します。
  *
  * @param tracks - シャッフル対象のトラック配列（artist_name プロパティを持つオブジェクト）
  * @returns 同じアーティストが連続しないようにシャッフルされた配列
@@ -36,14 +39,12 @@ export function shuffleByArtist<T extends { artist_name: string }>(
     artistGroups.set(track.artist_name, group);
   }
 
-  // 各グループをシャッフル
-  for (const group of artistGroups.values()) {
-    const shuffled = fisherYatesShuffle(group);
-    group.length = 0;
-    group.push(...shuffled);
+  // 各グループをシャッフルして新しい配列に置き換え
+  for (const [artist, group] of artistGroups) {
+    artistGroups.set(artist, fisherYatesShuffle(group));
   }
 
-  // グループを曲数の多い順にソート（シャッフル後に安定したランダム順で）
+  // グループを曲数の多い順にソート
   const sortedGroups = [...artistGroups.entries()].sort(
     (a, b) => b[1].length - a[1].length
   );
@@ -77,25 +78,23 @@ export function shuffleByArtist<T extends { artist_name: string }>(
   }
 
   // 最終チェック: まだ連続がある場合は追加のスワップを試みる
-  // 最大試行回数を設定して無限ループを防ぐ
-  const maxSwapAttempts = result.length * result.length;
-  let swapAttempts = 0;
-  let hasConsecutive = true;
+  // 最大試行回数を設定して無限ループを防ぐ（線形: n * 10）
+  const maxSwapAttempts = result.length * 10;
+  let totalAttempts = 0;
 
-  while (hasConsecutive && swapAttempts < maxSwapAttempts) {
-    hasConsecutive = false;
+  while (totalAttempts < maxSwapAttempts) {
+    let foundConsecutive = false;
 
     for (let i = 1; i < result.length; i++) {
       if (result[i].artist_name === result[i - 1].artist_name) {
+        foundConsecutive = true;
+
         // 入れ替え可能な位置を探す
         let swapped = false;
-
         for (let j = 0; j < result.length; j++) {
           if (j === i || j === i - 1) continue;
 
           // j の位置のトラックを i の位置に持ってきた場合の条件チェック
-          // 1. j のトラックが i-1 のアーティストと違う
-          // 2. j のトラックが i+1 のアーティストと違う（存在する場合）
           const canPlaceJAtI =
             result[j].artist_name !== result[i - 1].artist_name &&
             (i + 1 >= result.length ||
@@ -104,8 +103,6 @@ export function shuffleByArtist<T extends { artist_name: string }>(
           if (!canPlaceJAtI) continue;
 
           // i のトラックを j の位置に持っていった場合の条件チェック
-          // 1. i のトラックが j-1 のアーティストと違う（存在する場合）
-          // 2. i のトラックが j+1 のアーティストと違う（存在する場合）
           const prevJ = j > 0 ? result[j - 1].artist_name : null;
           const nextJ = j < result.length - 1 ? result[j + 1].artist_name : null;
 
@@ -116,16 +113,21 @@ export function shuffleByArtist<T extends { artist_name: string }>(
           if (canPlaceIAtJ) {
             [result[i], result[j]] = [result[j], result[i]];
             swapped = true;
-            hasConsecutive = true;
             break;
           }
         }
 
         if (swapped) {
-          swapAttempts++;
           break; // 最初からやり直す
         }
       }
+    }
+
+    totalAttempts++;
+
+    // 連続がなくなったら終了
+    if (!foundConsecutive) {
+      break;
     }
   }
 
