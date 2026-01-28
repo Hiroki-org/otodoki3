@@ -50,7 +50,7 @@ describe('src/lib/track-pool.ts', () => {
       const result = await getTracksFromPool(1);
 
       expect(mocks.from).toHaveBeenCalledWith('track_pool');
-      expect(mocks.select).toHaveBeenCalledWith('*');
+      expect(mocks.select).toHaveBeenCalledWith('track_id, track_name, artist_name, collection_name, preview_url, artwork_url, track_view_url, genre, release_date, metadata');
       expect(orderMock).toHaveBeenCalledWith('fetched_at', { ascending: true });
       expect(limitMock).toHaveBeenCalledWith(1);
 
