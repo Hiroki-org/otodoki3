@@ -83,7 +83,7 @@ export async function GET(
         playlist_track_id: t.id,
         position: t.position,
         added_at: t.added_at
-    })).filter(t => t.id !== undefined) || []; // Filter out any potential null joins
+    })).filter(t => t.track_id !== undefined) || []; // Filter out any potential null joins
 
     return NextResponse.json({ playlist, tracks: formattedTracks });
 }
