@@ -78,7 +78,7 @@ export function shuffleByArtist<T extends { artist_name: string }>(
   }
 
   // 最終チェック: まだ連続がある場合は追加のスワップを試みる
-  // 最大試行回数を設定して無限ループを防ぐ（線形: n * 10）
+  // 最大試行回数を設定して無限ループを防ぐ（最悪計算量はこのフェーズ全体でおおよそ O(n^3)）
   const maxSwapAttempts = result.length * 10;
   let totalAttempts = 0;
 
@@ -95,9 +95,10 @@ export function shuffleByArtist<T extends { artist_name: string }>(
           if (j === i || j === i - 1) continue;
 
           // j の位置のトラックを i の位置に持ってきた場合の条件チェック
+          // j === i + 1 の場合は、i + 1 との比較をスキップ（同じ位置なので）
           const canPlaceJAtI =
             result[j].artist_name !== result[i - 1].artist_name &&
-            (i + 1 >= result.length ||
+            (j === i + 1 || i + 1 >= result.length ||
               result[j].artist_name !== result[i + 1].artist_name);
 
           if (!canPlaceJAtI) continue;
