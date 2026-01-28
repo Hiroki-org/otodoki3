@@ -37,6 +37,8 @@ interface ItunesSearchResponse {
     results: ItunesSearchResult[];
 }
 
+const ITUNES_LOOKUP_CHUNK_SIZE = 50;
+
 /**
  * iTunes API のバッチリクエストに使用するチャンクサイズ
  * iTunes Lookup API は URL の長さ制限があるため、一度に送信できるトラックIDの数を制限する
@@ -59,8 +61,8 @@ async function getPreviewUrlsFromItunesApi(
         return previewUrlMap;
     }
 
-    for (let i = 0; i < trackIds.length; i += ITUNES_API_CHUNK_SIZE) {
-        const chunk = trackIds.slice(i, i + ITUNES_API_CHUNK_SIZE);
+    for (let i = 0; i < trackIds.length; i += ITUNES_LOOKUP_CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + ITUNES_LOOKUP_CHUNK_SIZE);
         const ids = chunk.join(',');
 
         const controller = new AbortController();

@@ -141,6 +141,41 @@ describe('fetchTracksFromChart', () => {
                 })
             );
         });
+
+        it('should correctly batch requests when items exceed chunk size', async () => {
+            // 55 items (50 + 5)
+            const manyResults = Array.from({ length: 55 }, (_, i) => ({
+                id: `${3000 + i}`,
+                name: `Track ${i}`,
+                artistName: `Artist ${i}`,
+                url: `https://example.com/${i}`,
+                artworkUrl100: `https://example.com/art${i}.jpg`,
+            }));
+
+            // Mock iTunes responses for all 55 items
+            const itunesResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = {};
+            manyResults.forEach(item => {
+                itunesResponses[item.id] = {
+                    results: [{
+                        trackId: Number(item.id),
+                        previewUrl: `https://example.com/preview${item.id}.m4a`
+                    }]
+                };
+            });
+
+            setupFetchMocks(fetchMock, { feed: { results: manyResults } }, itunesResponses);
+
+            const tracks = await fetchTracksFromChart(55);
+
+            expect(tracks).toHaveLength(55);
+            // 1 RSS call + 2 iTunes calls (50 + 5) = 3 calls
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+
+            // Verify chunked calls
+            const calls = fetchMock.mock.calls;
+            const itunesCalls = calls.filter(call => call[0].toString().includes('itunes.apple.com/lookup'));
+            expect(itunesCalls).toHaveLength(2);
+        });
     });
 
     describe('エッジケース', () => {
