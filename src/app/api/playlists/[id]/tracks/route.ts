@@ -166,15 +166,36 @@ export async function PATCH(
     }
 
     // Update positions
-    const upsertData = numericTracks.map((trackId, index) => ({
-        playlist_id: id,
-        track_id: trackId,
-        position: index,
-    }));
+    // 1. Fetch existing tracks to prevent inserting new ones (and match original behavior)
+    const { data: existingTracks, error: fetchError } = await supabase
+        .from('playlist_tracks')
+        .select('track_id')
+        .eq('playlist_id', id);
+
+    if (fetchError) {
+        console.error('Failed to fetch existing tracks:', fetchError);
+        return NextResponse.json({ error: 'Failed to fetch existing tracks' }, { status: 500 });
+    }
+
+    const existingTrackIds = new Set(existingTracks?.map(t => t.track_id));
+
+    // 2. Filter input to only include existing tracks
+    const validUpsertData = numericTracks
+        .map((trackId, index) => ({
+            playlist_id: id,
+            track_id: trackId,
+            position: index,
+        }))
+        .filter(item => existingTrackIds.has(item.track_id));
+
+    if (validUpsertData.length === 0) {
+        // No valid updates to make
+        return NextResponse.json({ success: true });
+    }
 
     const { error } = await supabase
         .from('playlist_tracks')
-        .upsert(upsertData, { onConflict: 'playlist_id,track_id' });
+        .upsert(validUpsertData, { onConflict: 'playlist_id,track_id' });
 
     if (error) {
         console.error('Failed to update track positions:', error);
