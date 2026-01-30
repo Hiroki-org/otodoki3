@@ -128,11 +128,6 @@ export function TrackCardStack({
         return true; // チュートリアルカードはそのまま通す
       });
 
-      console.log(
-        `Added ${uniqueNewTracks.length} unique tracks (filtered ${
-          newTracks.length - uniqueNewTracks.length
-        } duplicates)`
-      );
 
       return [...prev, ...uniqueNewTracks];
     });
@@ -207,7 +202,6 @@ export function TrackCardStack({
 
     // チュートリアルカード判定
     if ("type" in item && item.type === "tutorial") {
-      console.log("Tutorial swiped", direction);
       setStack((prev) => prev.slice(1));
       return;
     }
@@ -238,7 +232,6 @@ export function TrackCardStack({
 
     if (direction === "right") {
       // Like flow: optimistic removal, background retry with rollback on final failure
-      console.log("Like", track.track_id);
       const id = String(track.track_id);
       (async () => {
         setActionInProgress(true);
@@ -271,7 +264,6 @@ export function TrackCardStack({
       })();
     } else {
       // Dislike/Skip flow: await, show progress and retry up to 3 attempts total (initial + 2 retries)
-      console.log("Skip", track.track_id);
       const id = String(track.track_id);
       (async () => {
         setActionInProgress(true);
