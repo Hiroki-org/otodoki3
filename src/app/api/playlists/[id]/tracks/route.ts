@@ -144,7 +144,7 @@ export async function PATCH(
     const body = await request.json();
     const { tracks } = body; // Expecting array of track_ids in the new order
 
-    if (!tracks || !Array.isArray(tracks)) {
+    if (!tracks || !Array.isArray(tracks) || tracks.length === 0) {
         return NextResponse.json({ error: 'Tracks array is required' }, { status: 400 });
     }
 
@@ -166,7 +166,74 @@ export async function PATCH(
     }
 
     // Update positions
-    const updates = numericTracks.map((trackId, index) =>
+    // 1. Fetch existing tracks to prevent inserting new ones (and match original behavior)
+    const { data: existingTracks, error: fetchError } = await supabase
+        .from('playlist_tracks')
+        .select('track_id')
+        .eq('playlist_id', id);
+
+    if (fetchError) {
+        console.error('Failed to fetch existing tracks:', fetchError);
+        return NextResponse.json({ error: 'Failed to fetch existing tracks' }, { status: 500 });
+    }
+
+    const existingTrackIds = new Set(existingTracks?.map(t => t.track_id));
+
+    // 2. Filter input to only include existing tracks
+    const validUpsertData = numericTracks
+        .map((trackId, index) => ({
+            playlist_id: id,
+            track_id: trackId,
+            position: index,
+        }))
+        .filter(item => existingTrackIds.has(item.track_id));
+
+    if (validUpsertData.length === 0) {
+        // No valid updates to make
+        return NextResponse.json({ success: true });
+    }
+
+    const { error } = await supabase
+        .from('playlist_tracks')
+        .upsert(validUpsertData, { onConflict: 'playlist_id,track_id' });
+
+    if (fetchError) {
+        console.error('Failed to fetch existing tracks:', fetchError);
+        return NextResponse.json({ error: 'Failed to fetch playlist tracks' }, { status: 500 });
+    }
+
+    const existingTrackIds = new Set(existingTracks?.map(t => t.track_id) ?? []);
+
+    // Check for duplicate track IDs in the request
+    const uniqueTrackIds = new Set(numericTracks);
+    if (uniqueTrackIds.size !== numericTracks.length) {
+        return NextResponse.json({ 
+            error: 'Duplicate track IDs are not allowed in reorder request'
+        }, { status: 400 });
+    }
+
+    // Validate that all provided track IDs exist in the playlist
+    const invalidTracks = numericTracks.filter(trackId => !existingTrackIds.has(trackId));
+    if (invalidTracks.length > 0) {
+        return NextResponse.json({ 
+            error: 'Some tracks are not in the playlist',
+            invalid_tracks: invalidTracks
+        }, { status: 400 });
+    }
+
+    // Validate that all existing tracks are included in the reorder request
+    if (numericTracks.length !== existingTrackIds.size) {
+        return NextResponse.json({ 
+            error: 'All tracks in the playlist must be included in the reorder request',
+            expected_count: existingTrackIds.size,
+            provided_count: numericTracks.length
+        }, { status: 400 });
+    }
+
+    // Update positions using individual update operations
+    // Note: This uses Promise.all for concurrent updates rather than a transaction.
+    // If atomicity is critical, consider using a Supabase RPC function or transaction.
+    const updatePromises = numericTracks.map((trackId, index) =>
         supabase
             .from('playlist_tracks')
             .update({ position: index })
@@ -174,12 +241,17 @@ export async function PATCH(
             .eq('track_id', trackId)
     );
 
-    const results = await Promise.all(updates);
-    const errors = results.filter(r => r.error);
+    const results = await Promise.all(updatePromises);
+    const failedUpdates = results
+        .map((r, index) => ({ result: r, trackId: numericTracks[index] }))
+        .filter(({ result }) => result.error);
 
-    if (errors.length > 0) {
-        console.error('Failed to update some track positions:', errors);
-        return NextResponse.json({ error: 'Failed to update order completely' }, { status: 500 });
+    if (failedUpdates.length > 0) {
+        console.error('Failed to update track positions:', failedUpdates.map(f => f.result.error));
+        return NextResponse.json({ 
+            error: 'Failed to update order completely',
+            failed_tracks: failedUpdates.map(f => f.trackId)
+        }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
