@@ -69,7 +69,8 @@ describe('supabase client initialization', () => {
 
         // スタブの動作確認
         expect(supabase).toHaveProperty('from');
-        // @ts-ignore: スタブの型定義に依存するため
+        // @ts-expect-error: スタブの型定義に依存するため
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const stub = supabase as any;
         expect(await stub.select()).toEqual({ data: null, error: null });
         expect(await stub.upsert()).toEqual({ error: null });

@@ -1,4 +1,4 @@
-import { Music, Library, LogOut, User } from "lucide-react";
+import { Music, Library, User } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type NavItemSpec = {
