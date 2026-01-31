@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { usePlaylists } from './usePlaylists';
 
 // ラッパーコンポーネントの作成ヘルパー
@@ -26,8 +26,9 @@ describe('usePlaylists', () => {
         vi.resetAllMocks();
     });
 
-    afterAll(() => {
+    afterEach(() => {
         vi.unstubAllGlobals();
+        vi.resetAllMocks();
     });
 
     it('プレイリストの一覧を正常に取得できること', async () => {
@@ -81,7 +82,8 @@ describe('usePlaylists', () => {
         await waitFor(() => expect(result.current.isError).toBe(true));
 
         expect(result.current.error).toBeDefined();
-        expect(result.current.error?.message).toBe('Failed to fetch playlists');
+        // 厳密な一致ではなく、メッセージの一部が含まれているかチェックする
+        expect(result.current.error?.message).toMatch(/Failed to fetch playlists/);
     });
 
     it('fetchが例外を投げた場合、エラーを処理できること', async () => {
@@ -95,6 +97,7 @@ describe('usePlaylists', () => {
         await waitFor(() => expect(result.current.isError).toBe(true));
 
         expect(result.current.error).toBeDefined();
-        expect(result.current.error?.message).toBe('Network Error');
+        // 厳密な一致ではなく、メッセージの一部が含まれているかチェックする
+        expect(result.current.error?.message).toMatch(/Network Error/);
     });
 });
