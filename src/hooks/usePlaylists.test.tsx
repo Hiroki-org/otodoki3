@@ -87,7 +87,7 @@ describe('usePlaylists', () => {
 
         expect(result.current.error).toBeDefined();
         // The hook throws an error with status attached
-        expect((result.current.error as any).status).toBe(500);
+        expect((result.current.error as Error & { status?: number }).status).toBe(500);
     });
 
     it('ネットワークエラーを適切に処理すること', async () => {
