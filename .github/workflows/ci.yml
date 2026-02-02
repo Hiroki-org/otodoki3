@@ -12,7 +12,7 @@ jobs:
   # ========================================
   lint:
     name: ESLint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -30,7 +30,7 @@ jobs:
 
   type-check:
     name: TypeScript Type Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -51,7 +51,7 @@ jobs:
   # ========================================
   unit-test-utils:
     name: Unit Tests - Utils & Libs
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -73,7 +73,7 @@ jobs:
 
   unit-test-hooks:
     name: Unit Tests - React Hooks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -98,7 +98,7 @@ jobs:
   # ========================================
   integration-test-api:
     name: Integration Tests - API Routes
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     needs: [unit-test-utils, unit-test-hooks]
     steps:
       - uses: actions/checkout@v4
@@ -125,7 +125,7 @@ jobs:
   # ========================================
   e2e-test-auth:
     name: E2E Tests - Authentication
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     needs: [lint, type-check, integration-test-api]
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +161,7 @@ jobs:
 
   e2e-test-discovery:
     name: E2E Tests - Discovery Flow
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     needs: [e2e-test-auth]
     steps:
       - uses: actions/checkout@v4
@@ -219,7 +219,7 @@ jobs:
 
   e2e-test-playlists:
     name: E2E Tests - Playlists Flow
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     needs: [e2e-test-auth]
     steps:
       - uses: actions/checkout@v4
