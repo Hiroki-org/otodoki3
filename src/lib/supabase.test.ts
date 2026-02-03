@@ -72,7 +72,8 @@ describe('supabase client initialization', () => {
         expect(supabase).toHaveProperty('from');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const stub = supabase as any;
-        expect(await stub.select()).toEqual({ data: null, error: null });
+        expect(stub.from('table')).toBe(stub); // chainable check
+        expect(await stub.from('table').select()).toEqual({ data: null, error: null });
         expect(await stub.upsert()).toEqual({ error: null });
     });
 

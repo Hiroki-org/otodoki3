@@ -23,31 +23,21 @@ describe('parseJsonResponse', () => {
         expect(result).toEqual(mockData);
     });
 
-    it('Content-TypeがJSON以外の場合、エラーを投げること', async () => {
-        const htmlContent = '<html><body>Error</body></html>';
-        const response = new Response(htmlContent, {
-            headers: { 'content-type': 'text/html' },
-        });
-
+    it.each([
+        {
+            description: 'Content-TypeがJSON以外の場合',
+            response: new Response('<html><body>Error</body></html>', {
+                headers: { 'content-type': 'text/html' },
+            }),
+        },
+        {
+            description: 'Content-Typeヘッダーが存在しない場合',
+            response: new Response('Plain text response'),
+        },
+    ])('$description、エラーを投げること', async ({ response }) => {
         await expect(parseJsonResponse(response)).rejects.toThrow(
             'サーバーから予期しないレスポンス（HTML）が返されました。ログイン状態を確認してください。'
         );
         expect(consoleSpy).toHaveBeenCalled();
-    });
-
-    it('Content-Typeヘッダーが存在しない場合、エラーを投げること', async () => {
-        const textContent = 'Plain text response';
-        const response = new Response(textContent);
-        // default headers usually don't include content-type unless inferred,
-        // but explicitly `new Response` with just body often has null headers or text/plain depending on env.
-        // The code checks response.headers?.get("content-type"), so let's ensure it fails if missing.
-
-        // Note: In some environments new Response() automatically adds text/plain.
-        // To be safe we can use an object mock if Response behavior is flaky,
-        // but let's try real Response first as it's more standard.
-
-        await expect(parseJsonResponse(response)).rejects.toThrow(
-            'サーバーから予期しないレスポンス（HTML）が返されました。ログイン状態を確認してください。'
-        );
     });
 });
