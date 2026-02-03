@@ -136,8 +136,8 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock upsert
-        mockSupabase.mockUpsert.mockResolvedValueOnce({
+        // Mock update (called twice, once for each track)
+        mockSupabase.mockUpdate.mockResolvedValue({
             error: null,
         });
 
@@ -153,11 +153,10 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
 
-        // Verify upsert was called with correct data
-        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith([
-            { playlist_id: 'playlist-1', track_id: 12345, position: 0 },
-            { playlist_id: 'playlist-1', track_id: 67890, position: 1 }
-        ], { onConflict: 'playlist_id,track_id' });
+        // Verify update was called twice with correct positions
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(2);
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(1, { position: 0 });
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(2, { position: 1 });
     });
 
     it('should ignore unknown tracks during reorder', async () => {
@@ -182,8 +181,8 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock upsert
-        mockSupabase.mockUpsert.mockResolvedValueOnce({
+        // Mock update
+        mockSupabase.mockUpdate.mockResolvedValue({
             error: null,
         });
 
@@ -199,10 +198,9 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
 
-        // Verify upsert was called ONLY with 12345
-        expect(mockSupabase.mockUpsert).toHaveBeenCalledWith([
-            { playlist_id: 'playlist-1', track_id: 12345, position: 0 }
-        ], { onConflict: 'playlist_id,track_id' });
+        // Verify update was called ONLY once with track 12345 at position 0
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(1);
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledWith({ position: 0 });
     });
 
     it('should return 204 when no tracks to update', async () => {
@@ -234,8 +232,10 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
 
         const params = Promise.resolve({ id: 'playlist-1' });
         const response = await PATCH(req, { params });
+        const data = await response.json();
 
-        expect(response.status).toBe(204);
-        expect(mockSupabase.mockUpsert).not.toHaveBeenCalled();
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(mockSupabase.mockUpdate).not.toHaveBeenCalled();
     });
 });

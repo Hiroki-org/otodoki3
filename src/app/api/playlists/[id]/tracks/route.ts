@@ -180,25 +180,42 @@ export async function PATCH(
 
     // 2. Filter input to include only tracks that are currently in the playlist
     const validTrackIds = new Set(existingTracks?.map((t) => Number(t.track_id)) || []);
-    const upsertData = numericTracks
-        .filter((trackId) => validTrackIds.has(trackId))
-        .map((trackId, index) => ({
-            playlist_id: id,
-            track_id: trackId,
-            position: index,
-        }));
+    const updateData = numericTracks
+        .map((trackId, originalIndex) => ({
+            trackId,
+            originalIndex,
+        }))
+        .filter(({ trackId }) => validTrackIds.has(trackId));
 
-    if (upsertData.length === 0) {
-        return new NextResponse(null, { status: 204 });
+    if (updateData.length === 0) {
+        return NextResponse.json({ success: true });
     }
 
-    // 3. Bulk upsert (update positions)
-    const { error: updateError } = await supabase
-        .from('playlist_tracks')
-        .upsert(upsertData, { onConflict: 'playlist_id,track_id' });
+    // 3. Update positions using individual updates to prevent race conditions
+    // Execute updates in parallel for better performance
+    const updatePromises = updateData.map(({ trackId, originalIndex }) =>
+        supabase
+            .from('playlist_tracks')
+            .update({ position: originalIndex })
+            .eq('playlist_id', id)
+            .eq('track_id', trackId)
+            .then((result) => {
+                if (result.error) {
+                    console.error('Failed to update track position:', {
+                        playlist_id: id,
+                        track_id: trackId,
+                        position: originalIndex,
+                        error: result.error,
+                    });
+                    throw result.error;
+                }
+                return result;
+            })
+    );
 
-    if (updateError) {
-        console.error('Failed to update track positions:', updateError);
+    try {
+        await Promise.all(updatePromises);
+    } catch {
         return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
     }
 

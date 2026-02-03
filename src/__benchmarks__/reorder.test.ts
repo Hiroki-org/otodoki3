@@ -43,7 +43,6 @@ const mockSupabase = {
                     await pool.acquire();
                     await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
                     pool.release();
-                    // Return mock objects matching the input IDs
                     return { data: val2.map(id => ({ track_id: id })), error: null };
                 }
             })
@@ -51,17 +50,17 @@ const mockSupabase = {
         update: (data: any) => ({
             eq: (col: string, val: any) => ({
                 eq: async (col2: string, val2: any) => {
-                    await pool.acquire();
-                    await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
-                    pool.release();
-                    return { error: null };
+                     await pool.acquire();
+                     await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
+                     pool.release();
+                     return { error: null };
                 }
             })
         }),
         upsert: async (data: any, options: any) => {
             await pool.acquire();
             // Bulk upsert is heavier than single update but only one round trip
-            // Simulating a slightly higher cost for the bulk operation itself
+            // Let's assume it takes 2x the DB time of a single update due to data volume
             await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY * 2));
             pool.release();
             return { error: null };
@@ -69,16 +68,21 @@ const mockSupabase = {
     })
 };
 
-async function runBenchmark(trackCount: number, iterations: number = 5) {
-    const tracks = Array.from({ length: trackCount }, (_, i) => i + 1);
+describe('Performance Benchmark: Playlist Reorder', () => {
+    const tracks = Array.from({ length: 50 }, (_, i) => i + 1);
     const playlistId = 'playlist-123';
 
-    let totalLoopTime = 0;
-    let totalBulkTime = 0;
+    it('Compare parallel updates vs bulk upsert', async () => {
+        // --- Current Implementation: Parallel Individual Updates ---
+        const startParallel = performance.now();
+        // Step 1: Fetch existing (simulated)
+        await mockSupabase
+            .from('playlist_tracks')
+            .select('track_id')
+            .eq('playlist_id', playlistId)
+            .in('track_id', tracks);
 
-    for (let i = 0; i < iterations; i++) {
-        // --- Baseline: Loop ---
-        const startLoop = performance.now();
+        // Step 2: Parallel updates
         const updates = tracks.map((trackId, index) =>
             mockSupabase
                 .from('playlist_tracks')
@@ -87,10 +91,10 @@ async function runBenchmark(trackCount: number, iterations: number = 5) {
                 .eq('track_id', trackId)
         );
         await Promise.all(updates);
-        const endLoop = performance.now();
-        totalLoopTime += (endLoop - startLoop);
+        const endParallel = performance.now();
+        const timeParallel = endParallel - startParallel;
 
-        // --- Optimization: Bulk Upsert ---
+        // --- Alternative (Race Condition Risk): Bulk Upsert ---
         const startBulk = performance.now();
         // Step 1: Fetch existing (simulated)
         await mockSupabase
@@ -108,41 +112,22 @@ async function runBenchmark(trackCount: number, iterations: number = 5) {
         await mockSupabase.from('playlist_tracks').upsert(upsertData, { onConflict: 'playlist_id,track_id' });
 
         const endBulk = performance.now();
-        totalBulkTime += (endBulk - startBulk);
-    }
+        const timeBulk = endBulk - startBulk;
 
-    return {
-        avgLoopTime: totalLoopTime / iterations,
-        avgBulkTime: totalBulkTime / iterations
-    };
-}
+        console.log(`
+========================================
+PERFORMANCE BENCHMARK RESULTS (N=50 tracks)
+----------------------------------------
+Current (Select + Parallel Updates): ${timeParallel.toFixed(2)} ms
+Alternative (Select + Upsert): ${timeBulk.toFixed(2)} ms
+ Difference: ${(timeParallel / timeBulk).toFixed(1)}x ${timeBulk < timeParallel ? 'faster with upsert' : 'slower with upsert'}
+----------------------------------------
+Note: Upsert has a race condition risk where deleted
+tracks could be re-inserted. Parallel updates are safer.
+========================================
+        `);
 
-describe('Performance Benchmark: Playlist Reorder', () => {
-    it('should demonstrate performance improvement across different playlist sizes', async () => {
-        const sizes = [10, 50, 100];
-
-        console.log('\n========================================');
-        console.log('PERFORMANCE BENCHMARK RESULTS');
-        console.log('========================================');
-
-        for (const size of sizes) {
-            const { avgLoopTime, avgBulkTime } = await runBenchmark(size, 5);
-            const speedup = avgLoopTime / avgBulkTime;
-
-            console.log(`\nPlaylist Size: ${size} tracks (Avg of 5 runs)`);
-            console.log(`----------------------------------------`);
-            console.log(`Baseline (N Updates):       ${avgLoopTime.toFixed(2)} ms`);
-            console.log(`Optimization (Select+Upsert): ${avgBulkTime.toFixed(2)} ms`);
-            console.log(`Improvement:                ${speedup.toFixed(1)}x faster`);
-
-            // Assertions
-            // For small lists, the overhead of the extra safety check (SELECT) might make it slightly slower
-            // But for larger lists, the bulk approach should win significantly
-            if (size >= 50) {
-                expect(avgBulkTime).toBeLessThan(avgLoopTime);
-                expect(speedup).toBeGreaterThan(2);
-            }
-        }
-        console.log('\n========================================\n');
-    }, 20000);
+        // Both should be reasonably fast, we're just documenting the tradeoff
+        expect(timeParallel).toBeLessThan(500); // Should complete in reasonable time
+    });
 });
