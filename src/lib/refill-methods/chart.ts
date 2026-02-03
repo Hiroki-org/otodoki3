@@ -37,47 +37,69 @@ interface ItunesSearchResponse {
     results: ItunesSearchResult[];
 }
 
+const ITUNES_LOOKUP_CHUNK_SIZE = 50;
+
 /**
- * iTunes Search API から previewUrl を取得（キャッシュなし）
+ * iTunes API のバッチリクエストに使用するチャンクサイズ
+ * iTunes Lookup API は URL の長さ制限があるため、一度に送信できるトラックIDの数を制限する
  */
-async function getPreviewUrlFromItunesApi(
-    trackId: string,
+const ITUNES_API_CHUNK_SIZE = 50;
+
+/**
+ * iTunes Search API から previewUrl を一括取得
+ * @param trackIds 取得するトラックIDの配列
+ * @param timeoutMs タイムアウト（ミリ秒）。このタイムアウトは各チャンクごとに適用されるため、
+ *                  複数チャンクがある場合は総実行時間が timeoutMs * チャンク数 になる可能性があります。
+ * @returns トラックIDとpreviewURLのマップ
+ */
+async function getPreviewUrlsFromItunesApi(
+    trackIds: string[],
     timeoutMs: number = 3000
-): Promise<string | null> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        const url = `https://itunes.apple.com/lookup?id=${encodeURIComponent(trackId)}&country=jp`;
-        const response = await fetch(url, {
-            signal: controller.signal,
-            headers: { 'User-Agent': 'otodoki/1.0' },
-        });
-
-        if (!response.ok) {
-            console.warn(`iTunes API lookup failed for track ${trackId}: ${response.status}`);
-            return null;
-        }
-
-        const data = (await response.json()) as ItunesSearchResponse;
-        const result = data.results?.[0];
-
-        if (!result?.previewUrl) {
-            console.warn(`No previewUrl found for track ${trackId}`);
-            return null;
-        }
-
-        return result.previewUrl;
-    } catch (error) {
-        if (error instanceof Error && (error.name === 'AbortError' || (error as { code?: string }).code === 'ABORT_ERR')) {
-            console.warn(`iTunes API lookup timeout for track ${trackId}`);
-        } else {
-            console.warn(`iTunes API lookup error for track ${trackId}:`, error);
-        }
-        return null;
-    } finally {
-        clearTimeout(timeoutId);
+): Promise<Map<string, string>> {
+    const previewUrlMap = new Map<string, string>();
+    if (trackIds.length === 0) {
+        return previewUrlMap;
     }
+
+    for (let i = 0; i < trackIds.length; i += ITUNES_LOOKUP_CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + ITUNES_LOOKUP_CHUNK_SIZE);
+        const ids = chunk.join(',');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const url = `https://itunes.apple.com/lookup?id=${ids}&country=jp`;
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { 'User-Agent': 'otodoki/1.0' },
+            });
+
+            if (!response.ok) {
+                console.warn(`iTunes API lookup failed for chunk starting with ${chunk[0]}: ${response.status}`);
+                continue;
+            }
+
+            const data = (await response.json()) as ItunesSearchResponse;
+            const results = data.results ?? [];
+
+            for (const result of results) {
+                if (result.previewUrl) {
+                    previewUrlMap.set(String(result.trackId), result.previewUrl);
+                }
+            }
+        } catch (error) {
+            if (error instanceof Error && (error.name === 'AbortError' || (error as { code?: string }).code === 'ABORT_ERR')) {
+                console.warn(`iTunes API lookup timeout for chunk starting with ${chunk[0]}`);
+            } else {
+                console.warn(`iTunes API lookup error for chunk starting with ${chunk[0]}:`, error);
+            }
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    return previewUrlMap;
 }
 
 /**
@@ -131,19 +153,23 @@ export async function fetchTracksFromChart(
         // previewUrl は iTunes Search API から別途取得する
         const tracks: Track[] = [];
 
+        // 全トラックIDを収集して一括取得（数値として有効なIDのみを送る）
+        const trackIds = results
+            .map(item => item.id)
+            .filter(id => id && Number.isFinite(Number(id)));
+        const previewUrlMap = await getPreviewUrlsFromItunesApi(trackIds);
+
         for (const item of results) {
-            // iTunes Search API から previewUrl を取得
-            const previewUrl = await getPreviewUrlFromItunesApi(item.id);
-
-            // previewUrl がない場合はスキップ（再生不可）
-            if (!previewUrl) {
-                console.warn(`Skipping track ${item.id} (${item.name}) - no previewUrl available`);
-                continue;
-            }
-
             const trackId = Number(item.id);
             if (!Number.isFinite(trackId)) {
                 console.warn(`Skipping track with invalid id from RSS: ${item.id}`);
+                continue;
+            }
+
+            // previewUrl がない場合はスキップ（再生不可）
+            const previewUrl = previewUrlMap.get(item.id);
+            if (!previewUrl) {
+                console.warn(`Skipping track ${item.id} (${item.name}) - no previewUrl available`);
                 continue;
             }
 
