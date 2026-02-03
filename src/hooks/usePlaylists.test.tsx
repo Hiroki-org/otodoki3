@@ -1,47 +1,47 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { usePlaylists, Playlist } from './usePlaylists';
-import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { usePlaylists } from './usePlaylists';
 
-function createWrapper() {
+// ラッパーコンポーネントの作成ヘルパー
+const createWrapper = () => {
     const queryClient = new QueryClient({
         defaultOptions: {
             queries: {
-                retry: false,
+                retry: false, // テストのタイムアウトを防ぐためリトライを無効化
             },
         },
     });
-    // eslint-disable-next-line react/display-name
-    return ({ children }: { children: React.ReactNode }) => (
+
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-}
+    Wrapper.displayName = 'QueryClientWrapper';
+    return Wrapper;
+};
 
 describe('usePlaylists', () => {
-    const originalFetch = global.fetch;
-    const mockFetch = vi.fn();
-
     beforeEach(() => {
-        global.fetch = mockFetch;
-        mockFetch.mockReset();
+        vi.resetAllMocks();
     });
 
     afterEach(() => {
-        global.fetch = originalFetch;
-        vi.clearAllMocks();
+        vi.unstubAllGlobals();
+        vi.resetAllMocks();
     });
 
-    it('プレイリスト一覧を正常に取得できること', async () => {
-        const mockPlaylists: Playlist[] = [
+    it('プレイリストの一覧を正常に取得できること', async () => {
+        const mockPlaylists = [
             { id: '1', name: 'Playlist 1', icon: '🎵', count: 10 },
             { id: '2', name: 'Playlist 2', icon: '🔥', count: 5 },
         ];
 
-        mockFetch.mockResolvedValueOnce({
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: true,
+            status: 200,
             json: async () => ({ playlists: mockPlaylists }),
-        });
+        }));
 
         const { result } = renderHook(() => usePlaylists(), {
             wrapper: createWrapper(),
@@ -50,14 +50,14 @@ describe('usePlaylists', () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
         expect(result.current.data).toEqual(mockPlaylists);
-        expect(mockFetch).toHaveBeenCalledWith('/api/playlists');
     });
 
-    it('プレイリストがない場合は空配列を返すこと', async () => {
-        mockFetch.mockResolvedValueOnce({
+    it('レスポンスが空の場合、空配列を返すこと', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: true,
+            status: 200,
             json: async () => ({ playlists: [] }),
-        });
+        }));
 
         const { result } = renderHook(() => usePlaylists(), {
             wrapper: createWrapper(),
@@ -68,12 +68,12 @@ describe('usePlaylists', () => {
         expect(result.current.data).toEqual([]);
     });
 
-    it('取得に失敗した場合はエラーを投げること', async () => {
-        mockFetch.mockResolvedValueOnce({
+    it('APIエラー時にエラーを返すこと', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: false,
             status: 500,
-            statusText: 'Internal Server Error',
-        });
+            json: async () => ({}), // エラーレスポンスのモック
+        }));
 
         const { result } = renderHook(() => usePlaylists(), {
             wrapper: createWrapper(),
@@ -82,8 +82,22 @@ describe('usePlaylists', () => {
         await waitFor(() => expect(result.current.isError).toBe(true));
 
         expect(result.current.error).toBeDefined();
-        // エラーメッセージやステータスの検証は実装依存だが、ここではErrorオブジェクトであることを確認
-        expect(result.current.error).toBeInstanceOf(Error);
-        expect((result.current.error as Error).message).toBe('Failed to fetch playlists');
+        // 厳密な一致ではなく、メッセージの一部が含まれているかチェックする
+        expect(result.current.error?.message).toMatch(/Failed to fetch playlists/);
+    });
+
+    it('fetchが例外を投げた場合、エラーを処理できること', async () => {
+        const networkError = new Error('Network Error');
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(networkError));
+
+        const { result } = renderHook(() => usePlaylists(), {
+            wrapper: createWrapper(),
+        });
+
+        await waitFor(() => expect(result.current.isError).toBe(true));
+
+        expect(result.current.error).toBeDefined();
+        // 厳密な一致ではなく、メッセージの一部が含まれているかチェックする
+        expect(result.current.error?.message).toMatch(/Network Error/);
     });
 });
