@@ -47,17 +47,17 @@ const mockSupabase = {
                 }
             })
         }),
-        update: (_data: unknown) => ({
+        update: (_data: Record<string, unknown>) => ({
             eq: (_col: string, _val: unknown) => ({
                 eq: async (_col2: string, _val2: unknown) => {
-                     await pool.acquire();
-                     await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
-                     pool.release();
-                     return { error: null };
+                    await pool.acquire();
+                    await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
+                    pool.release();
+                    return { error: null };
                 }
             })
         }),
-        upsert: async (_data: unknown, _options: unknown) => {
+        upsert: async (_data: Record<string, unknown>[], _options: Record<string, unknown>) => {
             await pool.acquire();
             // Bulk upsert is heavier than single update but only one round trip
             // Let's assume it takes 2x the DB time of a single update due to data volume
