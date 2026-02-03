@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool, TRACK_POOL_COLUMNS } from '@/lib/track-pool';
+import { getTracksFromPool, addTracksToPool, getPoolSize, trimPool } from '@/lib/track-pool';
 
 // モックの定義
 const mocks = vi.hoisted(() => ({
@@ -50,7 +50,7 @@ describe('src/lib/track-pool.ts', () => {
       const result = await getTracksFromPool(1);
 
       expect(mocks.from).toHaveBeenCalledWith('track_pool');
-      expect(mocks.select).toHaveBeenCalledWith(TRACK_POOL_COLUMNS.join(','));
+      expect(mocks.select).toHaveBeenCalledWith('track_id, track_name, artist_name, collection_name, preview_url, artwork_url, track_view_url, genre, release_date, metadata');
       expect(orderMock).toHaveBeenCalledWith('fetched_at', { ascending: true });
       expect(limitMock).toHaveBeenCalledWith(1);
 
@@ -135,65 +135,65 @@ describe('src/lib/track-pool.ts', () => {
     });
 
     it('正常系: 空の配列が渡された場合は何もしない', async () => {
-      await addTracksToPool([]);
-      expect(mocks.upsert).not.toHaveBeenCalled();
+        await addTracksToPool([]);
+        expect(mocks.upsert).not.toHaveBeenCalled();
     });
 
     it('異常系: Upsertエラーが発生した場合は例外を投げる', async () => {
-      mocks.upsert.mockResolvedValue({ error: { message: 'Upsert Failed' } });
+        mocks.upsert.mockResolvedValue({ error: { message: 'Upsert Failed' } });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tracks = [{ track_id: 1 } as any];
-      await expect(addTracksToPool(tracks)).rejects.toThrow('Failed to add tracks to pool: Upsert Failed');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tracks = [{ track_id: 1 } as any];
+        await expect(addTracksToPool(tracks)).rejects.toThrow('Failed to add tracks to pool: Upsert Failed');
     });
   });
 
   describe('getPoolSize', () => {
     it('正常系: プールサイズを取得できる', async () => {
-      // select('*', { count: 'exact', head: true }) が呼ばれる
-      // 返り値は Promise<{ count: number, error: null }>
-      // ここでは select() 自体が thenable である必要がある、または await される
+        // select('*', { count: 'exact', head: true }) が呼ばれる
+        // 返り値は Promise<{ count: number, error: null }>
+        // ここでは select() 自体が thenable である必要がある、または await される
 
-      // 実装では await supabase.from().select(...)
-      // mocks.select が呼ばれ、その返り値が await される
+        // 実装では await supabase.from().select(...)
+        // mocks.select が呼ばれ、その返り値が await される
 
-      mocks.select.mockImplementation(() => {
-        return Promise.resolve({ count: 100, error: null });
-      });
+        mocks.select.mockImplementation(() => {
+            return Promise.resolve({ count: 100, error: null });
+        });
 
-      const size = await getPoolSize();
-      expect(size).toBe(100);
-      expect(mocks.select).toHaveBeenCalledWith('*', { count: 'exact', head: true });
+        const size = await getPoolSize();
+        expect(size).toBe(100);
+        expect(mocks.select).toHaveBeenCalledWith('*', { count: 'exact', head: true });
     });
 
     it('異常系: エラーが発生した場合は例外を投げる', async () => {
-      mocks.select.mockImplementation(() => {
-        return Promise.resolve({ count: null, error: { message: 'Count Error' } });
-      });
+        mocks.select.mockImplementation(() => {
+            return Promise.resolve({ count: null, error: { message: 'Count Error' } });
+        });
 
-      await expect(getPoolSize()).rejects.toThrow('Failed to get pool size: Count Error');
+        await expect(getPoolSize()).rejects.toThrow('Failed to get pool size: Count Error');
     });
   });
 
   describe('trimPool', () => {
     it('正常系: RPCを呼び出してプールをトリムする', async () => {
-      mocks.rpc.mockResolvedValue({ data: [{ deleted_count: 5 }], error: null });
+        mocks.rpc.mockResolvedValue({ data: [{ deleted_count: 5 }], error: null });
 
-      await trimPool(500);
+        await trimPool(500);
 
-      expect(mocks.rpc).toHaveBeenCalledWith('trim_track_pool', { max_size: 500 });
+        expect(mocks.rpc).toHaveBeenCalledWith('trim_track_pool', { max_size: 500 });
     });
 
     it('異常系: RPCエラーが発生した場合は例外を投げる', async () => {
-      mocks.rpc.mockResolvedValue({ data: null, error: { message: 'RPC Error' } });
+        mocks.rpc.mockResolvedValue({ data: null, error: { message: 'RPC Error' } });
 
-      await expect(trimPool(500)).rejects.toThrow('Failed to trim track pool: RPC Error');
+        await expect(trimPool(500)).rejects.toThrow('Failed to trim track pool: RPC Error');
     });
 
     it('正常系: 削除数が数値以外で返ってきても処理できる (文字)', async () => {
-      mocks.rpc.mockResolvedValue({ data: [{ deleted_count: "10" }], error: null });
-      // エラーにならなければOK (コンソールログ確認は難しいが処理が通ることを確認)
-      await expect(trimPool(500)).resolves.not.toThrow();
+         mocks.rpc.mockResolvedValue({ data: [{ deleted_count: "10" }], error: null });
+         // エラーにならなければOK (コンソールログ確認は難しいが処理が通ることを確認)
+         await expect(trimPool(500)).resolves.not.toThrow();
     });
   });
 });
