@@ -48,7 +48,7 @@ vi.mock('./ToastProvider', async (importOriginal) => {
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+const originalFetch = global.fetch;
 
 describe('TrackCardStack', () => {
     let queryClient: QueryClient;
@@ -71,6 +71,7 @@ describe('TrackCardStack', () => {
     ];
 
     beforeEach(() => {
+        global.fetch = mockFetch;
         queryClient = new QueryClient({
             defaultOptions: {
                 queries: {
@@ -89,6 +90,10 @@ describe('TrackCardStack', () => {
         });
     });
 
+    afterEach(() => {
+        global.fetch = originalFetch;
+    });
+
     const renderComponent = (tracks: Track[] = mockTracks) => {
         return render(
             <QueryClientProvider client={queryClient}>
@@ -99,23 +104,11 @@ describe('TrackCardStack', () => {
 
     it('初期表示でチュートリアルカードが表示されること', () => {
         renderComponent();
-        // Tutorial card has text "Swipe to like/pass" usually, or we can look for testid.
-        // Checking TutorialCard implementation briefly might help, but let's assume some content or class.
-        // Or look for the tutorial card id in the stack.
-        // Since `TrackCardStack` renders `SwipeableCard` which likely renders `TutorialCard` for tutorial items.
-        // Let's assume TutorialCard renders some instructions.
-        // Looking at SwipeableCard, it renders TutorialCard when type is tutorial.
-        // Let's check for the tutorial card element.
-        // We can check if "Artist 1" is NOT visible immediately as top card?
-        // Actually stack order is tutorial -> tracks.
-        // So first card is tutorial.
-        // We can verify "Artist 1" is in the DOM but maybe hidden or behind?
-        // Let's assume we can find the tutorial card content.
-        // As I don't know the exact content of TutorialCard, I'll rely on the structure.
 
-        // We can check if 3 cards are rendered (1 tutorial + 2 tracks).
-        // Actually AnimatePresence might render them all.
-        // Let's check if the buttons are present.
+        // チュートリアルカードが表示されていることを確認
+        expect(screen.getByLabelText('チュートリアルカードをスワイプ')).toBeInTheDocument();
+
+        // コントロールボタンが表示されていることを確認
         expect(screen.getByLabelText('いいね')).toBeInTheDocument();
         expect(screen.getByLabelText('よくない')).toBeInTheDocument();
     });
