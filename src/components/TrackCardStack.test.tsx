@@ -3,7 +3,6 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TrackCardStack } from './TrackCardStack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider } from './ToastProvider';
 import { Track } from '../types/track-pool';
 
 // Mock child components if necessary, but SwipeableCard is fine to use directly
@@ -28,7 +27,7 @@ vi.mock('../hooks/useAudioPlayer', () => ({
 }));
 
 vi.mock('../hooks/useAutoRefill', () => ({
-    useAutoRefill: (stack: any, onRefill: any) => ({
+    useAutoRefill: () => ({
         isRefilling: false,
         error: null,
         clearError: vi.fn(),
