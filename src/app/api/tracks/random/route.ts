@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { shuffleByArtist } from '@/lib/shuffleByArtist';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -115,13 +114,10 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // 同じアーティストの曲が連続しないようにシャッフル
-        const shuffledTracks = shuffleByArtist(tracks);
-
         return NextResponse.json(
             {
                 success: true,
-                tracks: shuffledTracks,
+                tracks: tracks,
             },
             {
                 headers: {
