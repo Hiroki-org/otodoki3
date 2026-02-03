@@ -71,17 +71,17 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
                 return null;
             }
             return {
-            type: 'track',
-            track_id: trackId,
-            track_name: row.track_name,
-            artist_name: row.artist_name,
-            collection_name: row.collection_name ?? undefined,
-            preview_url: row.preview_url,
-            artwork_url: row.artwork_url ?? undefined,
-            track_view_url: row.track_view_url ?? undefined,
-            genre: row.genre ?? undefined,
-            release_date: row.release_date ?? undefined,
-            metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
+                type: 'track',
+                track_id: trackId,
+                track_name: row.track_name,
+                artist_name: row.artist_name,
+                collection_name: row.collection_name ?? undefined,
+                preview_url: row.preview_url,
+                artwork_url: row.artwork_url ?? undefined,
+                track_view_url: row.track_view_url ?? undefined,
+                genre: row.genre ?? undefined,
+                release_date: row.release_date ?? undefined,
+                metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
             };
         }).filter((track) => track !== null) as Track[];
     } catch (error) {
