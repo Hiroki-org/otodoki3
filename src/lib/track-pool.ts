@@ -51,27 +51,28 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
         }
 
         // Database型からTrack型に変換
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return data.map((row: any) => {
+        type TrackPoolRow = Database['public']['Tables']['track_pool']['Row'];
+        return (data as TrackPoolRow[]).map((row) => {
             const trackId = Number(row.track_id);
             if (!Number.isFinite(trackId)) {
                 console.warn(`Invalid track_id: ${row.track_id}`);
                 return null;
             }
-            return {
-            type: 'track',
-            track_id: trackId,
-            track_name: row.track_name,
-            artist_name: row.artist_name,
-            collection_name: row.collection_name ?? undefined,
-            preview_url: row.preview_url,
-            artwork_url: row.artwork_url ?? undefined,
-            track_view_url: row.track_view_url ?? undefined,
-            genre: row.genre ?? undefined,
-            release_date: row.release_date ?? undefined,
-            metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
+            const track: Track = {
+                type: 'track',
+                track_id: trackId,
+                track_name: row.track_name,
+                artist_name: row.artist_name,
+                collection_name: row.collection_name ?? undefined,
+                preview_url: row.preview_url,
+                artwork_url: row.artwork_url ?? undefined,
+                track_view_url: row.track_view_url ?? undefined,
+                genre: row.genre ?? undefined,
+                release_date: row.release_date ?? undefined,
+                metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
             };
-        }).filter((track) => track !== null) as Track[];
+            return track;
+        }).filter((track): track is Track => track !== null);
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
         throw error;
