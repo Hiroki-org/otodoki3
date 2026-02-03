@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 import { parseJsonResponse } from './utils';
 
 describe('parseJsonResponse', () => {
@@ -7,6 +7,10 @@ describe('parseJsonResponse', () => {
 
     afterEach(() => {
         consoleSpy.mockClear();
+    });
+
+    afterAll(() => {
+        consoleSpy.mockRestore();
     });
 
     it('Content-Typeがapplication/jsonの場合、JSONデータを返すこと', async () => {

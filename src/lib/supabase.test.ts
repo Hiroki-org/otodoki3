@@ -55,6 +55,7 @@ describe('supabase client initialization', () => {
     it('本番/開発環境で環境変数が不足している場合、スタブクライアントが返されること', async () => {
         // 環境変数を空にする
         vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+        vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
         vi.stubEnv('NODE_ENV', 'development'); // test以外にする
 
         const createClientMock = vi.fn();
@@ -69,7 +70,6 @@ describe('supabase client initialization', () => {
 
         // スタブの動作確認
         expect(supabase).toHaveProperty('from');
-        // @ts-expect-error: スタブの型定義に依存するため
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const stub = supabase as any;
         expect(await stub.select()).toEqual({ data: null, error: null });
@@ -78,6 +78,7 @@ describe('supabase client initialization', () => {
 
     it('テスト環境でダミー値での作成も失敗した場合、スタブクライアントが返されること', async () => {
         vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+        vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
         vi.stubEnv('NODE_ENV', 'test');
 
         // createClientがエラーを投げるように設定
