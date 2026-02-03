@@ -290,9 +290,9 @@ describe('fetchTracksFromChart', () => {
 
             // Apple RSS API 1回 + iTunes Search API 1回（一括） = 2回
             expect(fetchMock).toHaveBeenCalledTimes(2);
-            
+
             // iTunes API が1回だけ呼ばれたことを確認
-            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+            const itunesApiCalls = fetchMock.mock.calls.filter(call =>
                 call[0].toString().includes('itunes.apple.com/lookup')
             );
             expect(itunesApiCalls).toHaveLength(1);
@@ -329,7 +329,7 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(75);
 
             // iTunes API が2回呼ばれたことを確認（50個 + 25個のチャンク）
-            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+            const itunesApiCalls = fetchMock.mock.calls.filter(call =>
                 call[0].toString().includes('itunes.apple.com/lookup')
             );
             expect(itunesApiCalls).toHaveLength(2);
@@ -374,7 +374,7 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(100);
 
             // iTunes API が2回呼ばれたことを確認（50個 + 50個のチャンク）
-            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+            const itunesApiCalls = fetchMock.mock.calls.filter(call =>
                 call[0].toString().includes('itunes.apple.com/lookup')
             );
             expect(itunesApiCalls).toHaveLength(2);
@@ -414,7 +414,7 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(2);
 
             // iTunes API が1回呼ばれ、有効なIDのみが送信されたことを確認
-            const itunesApiCalls = fetchMock.mock.calls.filter(call => 
+            const itunesApiCalls = fetchMock.mock.calls.filter(call =>
                 call[0].toString().includes('itunes.apple.com/lookup')
             );
             expect(itunesApiCalls).toHaveLength(1);
