@@ -64,7 +64,8 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
         }
 
         // Database型からTrack型に変換
-        return (data as any[]).map((row) => {
+        // Database型からTrack型に変換
+        return (data as unknown as Database['public']['Tables']['track_pool']['Row'][]).map((row) => {
             const trackId = Number(row.track_id);
             if (!Number.isFinite(trackId)) {
                 console.warn(`Invalid track_id: ${row.track_id}`);
