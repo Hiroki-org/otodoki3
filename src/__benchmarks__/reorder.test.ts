@@ -36,10 +36,10 @@ class ConnectionPool {
 const pool = new ConnectionPool(6);
 
 const mockSupabase = {
-    from: (table: string) => ({
-        select: (cols: string) => ({
-            eq: (col: string, val: any) => ({
-                in: async (col2: string, val2: any[]) => {
+    from: (_table: string) => ({
+        select: (_cols: string) => ({
+            eq: (_col: string, _val: unknown) => ({
+                in: async (_col2: string, val2: number[]) => {
                     await pool.acquire();
                     await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
                     pool.release();
@@ -47,17 +47,17 @@ const mockSupabase = {
                 }
             })
         }),
-        update: (data: any) => ({
-            eq: (col: string, val: any) => ({
-                eq: async (col2: string, val2: any) => {
-                     await pool.acquire();
-                     await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
-                     pool.release();
-                     return { error: null };
+        update: (_data: Record<string, unknown>) => ({
+            eq: (_col: string, _val: unknown) => ({
+                eq: async (_col2: string, _val2: unknown) => {
+                    await pool.acquire();
+                    await new Promise(r => setTimeout(r, NETWORK_LATENCY + DB_LATENCY));
+                    pool.release();
+                    return { error: null };
                 }
             })
         }),
-        upsert: async (data: any, options: any) => {
+        upsert: async (_data: Record<string, unknown>[], _options: Record<string, unknown>) => {
             await pool.acquire();
             // Bulk upsert is heavier than single update but only one round trip
             // Let's assume it takes 2x the DB time of a single update due to data volume
