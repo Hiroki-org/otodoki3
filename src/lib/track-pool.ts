@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import type { Database, Json } from '@/types/database';
 import type { Track } from '@/types/track-pool';
 
+const TRACK_SELECT_COLUMNS = 'track_id,track_name,artist_name,collection_name,preview_url,artwork_url,track_view_url,genre,release_date,metadata';
+
 /**
  * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
  */
@@ -37,7 +39,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
     try {
         const { data, error } = await supabase
             .from('track_pool')
-            .select('track_id,track_name,artist_name,collection_name,preview_url,artwork_url,track_view_url,genre,release_date,metadata')
+            .select(TRACK_SELECT_COLUMNS)
             .order('fetched_at', { ascending: true })
             .limit(count);
 
@@ -50,7 +52,8 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             return [];
         }
 
-        const rows = data as unknown as Database['public']['Tables']['track_pool']['Row'][];
+        const rows = data as unknown as Pick<Database['public']['Tables']['track_pool']['Row'],
+            'track_id' | 'track_name' | 'artist_name' | 'collection_name' | 'preview_url' | 'artwork_url' | 'track_view_url' | 'genre' | 'release_date' | 'metadata'>[];
 
         // Database型からTrack型に変換
         return rows.map((row) => {
@@ -72,7 +75,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             release_date: row.release_date ?? undefined,
             metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
             };
-        }).filter((track) => track !== null) as Track[];
+        }).filter((track): track is Track => track !== null);
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
         throw error;
