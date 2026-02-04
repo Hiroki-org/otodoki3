@@ -1,13 +1,13 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { AudioProgressBar } from './AudioProgressBar';
 
 describe('AudioProgressBar', () => {
   it('正常な進捗率（0-100）が正しく表示されること', () => {
-    const { container } = render(<AudioProgressBar progress={50} />);
+    render(<AudioProgressBar progress={50} />);
     // data-testid で内部のバー要素を取得します
-    const innerBar = container.querySelector('[data-testid="audio-progress-bar__fill"]') as HTMLElement;
+    const innerBar = screen.getByTestId('audio-progress-bar__fill');
 
     expect(innerBar).toBeInTheDocument();
     expect(innerBar).toHaveStyle({ width: '50%' });
@@ -19,8 +19,8 @@ describe('AudioProgressBar', () => {
     { description: '不正な値（NaN）は0として扱われる', progress: NaN, expectedWidth: '0%' },
     { description: '不正な値（Infinity）は0として扱われる', progress: Infinity, expectedWidth: '0%' },
   ])('$descriptionこと', ({ progress, expectedWidth }) => {
-    const { container } = render(<AudioProgressBar progress={progress} />);
-    const innerBar = container.querySelector('[data-testid="audio-progress-bar__fill"]');
+    render(<AudioProgressBar progress={progress} />);
+    const innerBar = screen.getByTestId('audio-progress-bar__fill');
 
     expect(innerBar).toBeInTheDocument();
     expect(innerBar).toHaveStyle({ width: expectedWidth });
