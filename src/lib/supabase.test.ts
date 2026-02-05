@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// スタブ用の型定義
+type StubClient = {
+    from: (table: string) => StubClient;
+    select: () => Promise<{ data: null; error: null }>;
+    order: () => StubClient;
+    limit: () => { data: null; error: null };
+    upsert: () => Promise<{ error: null }>;
+    delete: () => Promise<{ error: null }>;
+    rpc: () => { maybeSingle: () => Promise<{ data: null; error: { code: string; message: string } }> };
+};
+
 describe('src/lib/supabase.ts', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -37,22 +48,25 @@ describe('src/lib/supabase.ts', () => {
     expect(supabase).toHaveProperty('rpc');
 
     // スタブの動作確認
-    expect((supabase as any).from('table')).toBe(supabase);
-    expect((supabase as any).order()).toBe(supabase);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stub = supabase as any as StubClient;
 
-    const selectResult = await (supabase as any).select();
+    expect(stub.from('table')).toBe(supabase);
+    expect(stub.order()).toBe(supabase);
+
+    const selectResult = await stub.select();
     expect(selectResult).toEqual({ data: null, error: null });
 
-    const limitResult = (supabase as any).limit();
+    const limitResult = stub.limit();
     expect(limitResult).toEqual({ data: null, error: null });
 
-    const upsertResult = await (supabase as any).upsert();
+    const upsertResult = await stub.upsert();
     expect(upsertResult).toEqual({ error: null });
 
-    const deleteResult = await (supabase as any).delete();
+    const deleteResult = await stub.delete();
     expect(deleteResult).toEqual({ error: null });
 
-    const rpcResult = await (supabase as any).rpc().maybeSingle();
+    const rpcResult = await stub.rpc().maybeSingle();
     expect(rpcResult).toEqual({
       data: null,
       error: { code: 'PGRST202', message: 'function not found' }
