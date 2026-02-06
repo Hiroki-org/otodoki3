@@ -23,7 +23,8 @@ function setupFetchMocks(
                 ok: true,
                 status: 200,
                 json: async () => appleRssResponse,
-            });
+                text: async () => JSON.stringify(appleRssResponse),
+            } as Response);
         }
         // iTunes Search API のモック
         if (urlString.includes('itunes.apple.com/lookup')) {
@@ -33,14 +34,16 @@ function setupFetchMocks(
                     ok: true,
                     status: 200,
                     json: async () => itunesSearchResponses[trackId],
-                });
+                    text: async () => JSON.stringify(itunesSearchResponses[trackId]),
+                } as Response);
             }
             // トラックIDが見つからない場合は空のレスポンス
             return Promise.resolve({
                 ok: true,
                 status: 200,
                 json: async () => ({ results: [] }),
-            });
+                text: async () => JSON.stringify({ results: [] }),
+            } as Response);
         }
         return Promise.reject(new Error('Unexpected URL'));
     });
