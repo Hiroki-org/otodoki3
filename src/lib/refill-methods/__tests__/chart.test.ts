@@ -8,45 +8,6 @@ import {
 } from '../../__fixtures__/tracks';
 
 /**
- * iTunes Search API のモックレスポンスを解決するヘルパー
- */
-function resolveMockItunesResponse(
-    url: string | URL,
-    mockResponses: Record<string, { results: { previewUrl: string }[] }>
-): Promise<Response> | null {
-    const urlString = url.toString();
-    if (!urlString.includes('itunes.apple.com/lookup')) {
-        return null;
-    }
-
-    const trackIdParam = new URL(urlString).searchParams.get('id');
-    if (trackIdParam) {
-        // カンマ区切りのIDに対応 (バッチ処理用)
-        // Trim and filter empty strings as requested
-        const trackIds = trackIdParam.split(',').map(id => id.trim()).filter(Boolean);
-
-        const allResults = trackIds.flatMap(id => {
-            const response = mockResponses[id];
-            return response ? response.results : [];
-        });
-
-        if (allResults.length > 0) {
-             return Promise.resolve({
-                ok: true,
-                status: 200,
-                json: async () => ({ results: allResults }),
-            } as Response);
-        }
-    }
-    // トラックIDが見つからない場合は空のレスポンス
-    return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ results: [] }),
-    } as Response);
-}
-
-/**
  * Apple RSS API と iTunes Search API の両方のモックを設定するヘルパー
  */
 function setupFetchMocks(
@@ -62,14 +23,28 @@ function setupFetchMocks(
                 ok: true,
                 status: 200,
                 json: async () => appleRssResponse,
+                text: async () => JSON.stringify(appleRssResponse),
             } as Response);
         }
-
-        const itunesResponse = resolveMockItunesResponse(url, itunesSearchResponses);
-        if (itunesResponse) {
-            return itunesResponse;
+        // iTunes Search API のモック
+        if (urlString.includes('itunes.apple.com/lookup')) {
+            const trackId = new URL(urlString).searchParams.get('id');
+            if (trackId && itunesSearchResponses[trackId]) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => itunesSearchResponses[trackId],
+                    text: async () => JSON.stringify(itunesSearchResponses[trackId]),
+                } as Response);
+            }
+            // トラックIDが見つからない場合は空のレスポンス
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ results: [] }),
+                text: async () => JSON.stringify({ results: [] }),
+            } as Response);
         }
-
         return Promise.reject(new Error('Unexpected URL'));
     });
 }
@@ -299,10 +274,8 @@ describe('fetchTracksFromChartWithRetry', () => {
             const tracks = await fetchTracksFromChartWithRetry(10, 3);
 
             expect(tracks).toHaveLength(3);
-            // Apple RSS API 1回 + iTunes Search API (1回 if batched, 3回 if serial)
-            // Expect range as per feedback
-            expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
-            expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(4);
+            // Apple RSS API 1回 + iTunes Search API 3回（各トラック） = 4回
+            expect(fetchMock).toHaveBeenCalledTimes(4);
         });
 
         it('should retry on failure and succeed', async () => {
@@ -321,10 +294,21 @@ describe('fetchTracksFromChartWithRetry', () => {
                         json: async () => mockAppleRssResponse,
                     } as Response);
                 }
-
-                const itunesResponse = resolveMockItunesResponse(url, mockItunesSearchResponses);
-                if (itunesResponse) {
-                    return itunesResponse;
+                // iTunes Search API のモック
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                        } as Response);
+                    }
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => ({ results: [] }),
+                    } as Response);
                 }
                 return Promise.reject(new Error('Unexpected URL'));
             });
@@ -387,10 +371,21 @@ describe('fetchTracksFromChartWithRetry', () => {
                         json: async () => mockAppleRssResponse,
                     } as Response);
                 }
-
-                const itunesResponse = resolveMockItunesResponse(url, mockItunesSearchResponses);
-                if (itunesResponse) {
-                    return itunesResponse;
+                // iTunes Search API のモック
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                        } as Response);
+                    }
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => ({ results: [] }),
+                    } as Response);
                 }
                 return Promise.reject(new Error('Unexpected URL'));
             });

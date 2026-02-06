@@ -2,8 +2,6 @@ import { supabase } from '@/lib/supabase';
 import type { Database, Json } from '@/types/database';
 import type { Track } from '@/types/track-pool';
 
-const TRACK_SELECT_COLUMNS = 'track_id,track_name,artist_name,collection_name,preview_url,artwork_url,track_view_url,genre,release_date,metadata';
-
 /**
  * metadata を検証・正規化して JSON 型で返す。無効なら null を返す
  */
@@ -39,7 +37,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
     try {
         const { data, error } = await supabase
             .from('track_pool')
-            .select(TRACK_SELECT_COLUMNS)
+            .select('track_id,track_name,artist_name,collection_name,preview_url,artwork_url,track_view_url,genre,release_date,metadata')
             .order('fetched_at', { ascending: true })
             .limit(count);
 
@@ -52,30 +50,29 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             return [];
         }
 
-        const rows = data as unknown as Pick<Database['public']['Tables']['track_pool']['Row'],
-            'track_id' | 'track_name' | 'artist_name' | 'collection_name' | 'preview_url' | 'artwork_url' | 'track_view_url' | 'genre' | 'release_date' | 'metadata'>[];
-
         // Database型からTrack型に変換
-        return rows.map((row): Track | null => {
-            const trackId = Number(row.track_id);
+        return data.map((row) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const r = row as any;
+            const trackId = Number(r.track_id);
             if (!Number.isFinite(trackId)) {
-                console.warn(`Invalid track_id: ${row.track_id}`);
+                console.warn(`Invalid track_id: ${r.track_id}`);
                 return null;
             }
             return {
             type: 'track',
             track_id: trackId,
-            track_name: row.track_name,
-            artist_name: row.artist_name,
-            collection_name: row.collection_name ?? undefined,
-            preview_url: row.preview_url,
-            artwork_url: row.artwork_url ?? undefined,
-            track_view_url: row.track_view_url ?? undefined,
-            genre: row.genre ?? undefined,
-            release_date: row.release_date ?? undefined,
-            metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
+            track_name: r.track_name,
+            artist_name: r.artist_name,
+            collection_name: r.collection_name ?? undefined,
+            preview_url: r.preview_url,
+            artwork_url: r.artwork_url ?? undefined,
+            track_view_url: r.track_view_url ?? undefined,
+            genre: r.genre ?? undefined,
+            release_date: r.release_date ?? undefined,
+            metadata: r.metadata && typeof r.metadata === 'object' && !Array.isArray(r.metadata) ? (r.metadata as Record<string, unknown>) : undefined,
             };
-        }).filter((track): track is Track => track !== null);
+        }).filter((track) => track !== null) as Track[];
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
         throw error;
