@@ -12,11 +12,11 @@ jobs:
   # ========================================
   lint:
     name: ESLint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -30,11 +30,11 @@ jobs:
 
   type-check:
     name: TypeScript Type Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -51,11 +51,11 @@ jobs:
   # ========================================
   unit-test-utils:
     name: Unit Tests - Utils & Libs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -73,11 +73,11 @@ jobs:
 
   unit-test-hooks:
     name: Unit Tests - React Hooks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -98,12 +98,12 @@ jobs:
   # ========================================
   integration-test-api:
     name: Integration Tests - API Routes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [unit-test-utils, unit-test-hooks]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -125,12 +125,12 @@ jobs:
   # ========================================
   e2e-test-auth:
     name: E2E Tests - Authentication
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [lint, type-check, integration-test-api]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -153,7 +153,7 @@ jobs:
           ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS_TEST }}
       - name: Upload auth test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-auth
           path: playwright-report/
@@ -161,12 +161,12 @@ jobs:
 
   e2e-test-discovery:
     name: E2E Tests - Discovery Flow
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [e2e-test-auth]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -211,7 +211,7 @@ jobs:
           ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS_TEST }}
       - name: Upload discovery test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-discovery
           path: playwright-report/
@@ -219,12 +219,12 @@ jobs:
 
   e2e-test-playlists:
     name: E2E Tests - Playlists Flow
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [e2e-test-auth]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -247,7 +247,7 @@ jobs:
           ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS_TEST }}
       - name: Upload playlists test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-playlists
           path: playwright-report/
