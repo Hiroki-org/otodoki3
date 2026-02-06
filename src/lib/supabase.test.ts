@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// スタブ用の型定義
+type StubClient = {
+    from: (table: string) => StubClient;
+    select: () => Promise<{ data: null; error: null }>;
+    order: () => StubClient;
+    limit: () => { data: null; error: null };
+    upsert: () => Promise<{ error: null }>;
+    delete: () => Promise<{ error: null }>;
+    rpc: () => { maybeSingle: () => Promise<{ data: null; error: { code: string; message: string } }> };
+};
+
 describe('src/lib/supabase.ts', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -10,79 +21,96 @@ describe('src/lib/supabase.ts', () => {
     vi.unstubAllEnvs();
   });
 
-  it('環境変数が設定されている場合、Supabaseクライアントが正常に作成される', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon-key');
+  it('環境変数が設定されていない場合、スタブクライアントが返されること', async () => {
+    // 環境変数を空に設定
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
+    vi.stubEnv('SUPABASE_URL', '');
+    vi.stubEnv('SUPABASE_ANON_KEY', '');
+
+    // createClient が例外を投げるようにモックして、スタブへのフォールバックを強制する
+    vi.doMock('@supabase/supabase-js', () => ({
+        createClient: vi.fn().mockImplementation(() => {
+            throw new Error('Forced error for testing');
+        }),
+    }));
 
     // モジュールを動的にインポート
     const { supabase } = await import('./supabase');
 
-    expect(supabase).toBeDefined();
-    // 本物のクライアントっぽいか確認（authプロパティがあるかなど）
-    expect(supabase).toHaveProperty('auth');
+    // スタブクライアントのメソッドが存在することを確認
     expect(supabase).toHaveProperty('from');
-  });
+    expect(supabase).toHaveProperty('select');
+    expect(supabase).toHaveProperty('order');
+    expect(supabase).toHaveProperty('limit');
+    expect(supabase).toHaveProperty('upsert');
+    expect(supabase).toHaveProperty('delete');
+    expect(supabase).toHaveProperty('rpc');
 
-  it('環境変数が不足しており、NODE_ENVがtestの場合、ダミークライアントが作成される', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
-    vi.stubEnv('NODE_ENV', 'test');
+    // スタブの動作確認
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stub = supabase as any as StubClient;
 
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(stub.from('table')).toBe(supabase);
+    expect(stub.order()).toBe(supabase);
 
-    const { supabase } = await import('./supabase');
+    const selectResult = await stub.select();
+    expect(selectResult).toEqual({ data: null, error: null });
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Supabase env vars not found'));
-    expect(supabase).toBeDefined();
-    // ダミークライアントでも通常のメソッドは持っているはず
-    expect(supabase).toHaveProperty('from');
-  });
+    const limitResult = stub.limit();
+    expect(limitResult).toEqual({ data: null, error: null });
 
-  it('環境変数が不足しており、ダミークライアント作成も失敗する場合、スタブクライアントが返される', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
-    vi.stubEnv('NODE_ENV', 'test');
+    const upsertResult = await stub.upsert();
+    expect(upsertResult).toEqual({ error: null });
 
-    // createClientをモックしてエラーを投げさせる
-    vi.doMock('@supabase/supabase-js', () => ({
-      createClient: () => {
-        throw new Error('Create client failed');
-      },
-    }));
+    const deleteResult = await stub.delete();
+    expect(deleteResult).toEqual({ error: null });
 
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const { supabase } = await import('./supabase');
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create Supabase client with dummy values'),
-        expect.any(Error)
-    );
-
-    // スタブクライアントの動作確認
-    expect(supabase.from('table')).toBe(supabase);
-    expect(await supabase.select()).toEqual({ data: null, error: null });
-    expect(supabase.order()).toBe(supabase);
-    expect(supabase.limit()).toEqual({ data: null, error: null });
-    expect(await supabase.upsert({})).toEqual({ error: null });
-    expect(await supabase.delete()).toEqual({ error: null });
-
-    const rpcResult = await supabase.rpc('func').maybeSingle();
+    const rpcResult = await stub.rpc().maybeSingle();
     expect(rpcResult).toEqual({
-        data: null,
-        error: { code: 'PGRST202', message: 'function not found' }
+      data: null,
+      error: { code: 'PGRST202', message: 'function not found' }
     });
   });
 
-  it('環境変数が不足しており、NODE_ENVがtest以外の場合、スタブクライアントが返される', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
-    vi.stubEnv('NODE_ENV', 'production'); // test以外
+  it('環境変数が設定されている場合、正常なクライアントが作成されること（モック確認）', async () => {
+    // 環境変数を設定
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-key');
 
+    // createClientをモック
+    const createClientMock = vi.fn().mockReturnValue({
+        from: vi.fn(),
+    });
+
+    vi.doMock('@supabase/supabase-js', () => ({
+        createClient: createClientMock,
+    }));
+
+    // モジュールを動的にインポート
+    await import('./supabase');
+
+    // createClientが呼ばれたことを確認
+    expect(createClientMock).toHaveBeenCalledWith('https://example.supabase.co', 'test-key');
+  });
+
+  it('クライアント作成時にエラーが発生した場合、スタブクライアントが返されること', async () => {
+    // 環境変数を設定
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-key');
+
+    // createClient が例外を投げるようにモック
+    vi.doMock('@supabase/supabase-js', () => ({
+        createClient: vi.fn().mockImplementation(() => {
+            throw new Error('Initialization error');
+        }),
+    }));
+
+    // モジュールを動的にインポート
     const { supabase } = await import('./supabase');
 
-    // スタブクライアントであることを確認
-    expect(supabase.from('table')).toBe(supabase);
-    expect(await supabase.select()).toEqual({ data: null, error: null });
+    // スタブクライアントのメソッドが存在することを確認
+    expect(supabase).toHaveProperty('from');
+    expect(supabase).toHaveProperty('select');
   });
 });

@@ -90,10 +90,10 @@ export const mockEmptyAppleRssResponse = {
 /**
  * iTunes Search API のモックレスポンス
  */
-export const mockItunesSearchResponses: Record<string, { results: { trackId: number; previewUrl: string }[] }> = {
-    '2001': { results: [{ trackId: 2001, previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart1.m4a' }] },
-    '2002': { results: [{ trackId: 2002, previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart2.m4a' }] },
-    '2003': { results: [{ trackId: 2003, previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart3.m4a' }] },
+export const mockItunesSearchResponses: Record<string, { results: { previewUrl: string }[] }> = {
+    '2001': { results: [{ previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart1.m4a' }] },
+    '2002': { results: [{ previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart2.m4a' }] },
+    '2003': { results: [{ previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/chart3.m4a' }] },
 };
 
 /**

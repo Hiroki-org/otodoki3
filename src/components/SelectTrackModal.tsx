@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Music, Check, Pause } from "lucide-react";
 import Image from "next/image";
@@ -22,6 +22,78 @@ interface SelectTrackModalProps {
   existingTrackIds?: number[];
   onSuccess?: (track?: Track) => void;
 }
+
+interface TrackListItemProps {
+  track: Track;
+  isAdded: boolean;
+  isPlaying: boolean;
+  onPreviewClick: (e: React.MouseEvent, track: Track) => void;
+  onToggleTrack: (trackId: number) => void;
+}
+
+const TrackListItem = memo(function TrackListItem({
+  track,
+  isAdded,
+  isPlaying,
+  onPreviewClick,
+  onToggleTrack,
+}: TrackListItemProps) {
+  const trackId = track.track_id;
+
+  return (
+    <div
+      className={`group flex w-full items-center gap-3 p-3 rounded-xl transition-all min-w-0 ${
+        isAdded
+          ? "bg-green-500/10"
+          : "bg-secondary/50 hover:bg-secondary active:scale-[0.98]"
+      }`}
+    >
+      <button
+        type="button"
+        className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted cursor-pointer border-0 p-0"
+        onClick={(e) => onPreviewClick(e, track)}
+        aria-label={`プレビュー: ${track.track_name}`}
+      >
+        <Image
+          src={track.artwork_url}
+          alt={track.track_name}
+          fill
+          className="object-cover"
+          unoptimized
+        />
+        {isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <Pause className="h-5 w-5 text-white fill-current" />
+          </div>
+        )}
+      </button>
+      <div className="flex-1 text-left min-w-0">
+        <p className="font-medium truncate text-foreground text-sm">
+          {track.track_name}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {track.artist_name}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onToggleTrack(trackId)}
+        className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+          isAdded
+            ? "bg-green-500/20 hover:bg-green-500/30"
+            : "bg-muted text-muted-foreground group-hover:bg-secondary-foreground/10 group-hover:text-foreground"
+        }`}
+        aria-label={isAdded ? "削除" : "追加"}
+      >
+        {isAdded ? (
+          <Check className="h-5 w-5 text-green-600" />
+        ) : (
+          <Music className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
+});
 
 /**
  * お気に入りから曲を選択して指定のプレイリストへ追加・削除できるモーダルを表示するコンポーネント。
@@ -53,18 +125,37 @@ export function SelectTrackModal({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = useState<number | null>(null);
 
-  const stopAudio = () => {
+  // Refs for stable callbacks
+  const playingIdRef = useRef<number | null>(null);
+  const addedTracksRef = useRef<Set<number>>(new Set());
+  const tracksRef = useRef<Track[]>([]);
+
+  useEffect(() => {
+    playingIdRef.current = playingId;
+  }, [playingId]);
+
+  useEffect(() => {
+    addedTracksRef.current = addedTracks;
+  }, [addedTracks]);
+
+  useEffect(() => {
+    tracksRef.current = tracks;
+  }, [tracks]);
+
+  const stopAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
     setPlayingId(null);
-  };
+  }, []);
 
-  const handlePreviewClick = (e: React.MouseEvent, track: Track) => {
+  const handlePreviewClick = useCallback((e: React.MouseEvent, track: Track) => {
     e.stopPropagation();
+    const currentPlayingId = playingIdRef.current;
+
     // 同じ曲なら停止
-    if (playingId === track.track_id) {
+    if (currentPlayingId === track.track_id) {
       stopAudio();
       return;
     }
@@ -84,15 +175,17 @@ export function SelectTrackModal({
       .play()
       .catch((err) => console.error("Failed to play audio preview:", err));
     setPlayingId(track.track_id);
-  };
+  }, [stopAudio]);
 
   // モーダルが閉じられた or コンポーネントがアンマウントされたときは音声を停止
   useEffect(() => {
     if (isOpen) {
       // This cleanup runs when the modal closes or the component unmounts.
-      return () => stopAudio();
+      return () => {
+        stopAudio();
+      };
     }
-  }, [isOpen]);
+  }, [isOpen, stopAudio]);
 
   useEffect(() => {
     if (isOpen) {
@@ -138,46 +231,108 @@ export function SelectTrackModal({
     }
   };
 
-  const handleAddTrack = async (trackId: number) => {
-    if (addedTracks.has(trackId)) {
-      return;
+  const handleToggleTrack = useCallback(async (trackId: number) => {
+    const currentAddedTracks = addedTracksRef.current;
+    const isAdded = currentAddedTracks.has(trackId);
+
+    // Stop audio if playing the toggled track
+    if (playingIdRef.current === trackId) {
+      stopAudio();
     }
 
-    // 追加時はプレビューを停止して重複再生を防止
-    stopAudio();
+    if (isAdded) {
+      // REMOVE TRACK
 
-    // 楽観的更新：即座に反映
-    setAddedTracks((prev) => new Set([...prev, trackId]));
-
-    const trackToReturn = tracks.find((t) => t.track_id === trackId);
-    if (trackToReturn) {
-      onSuccess?.(trackToReturn);
-    }
-
-    try {
-      const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ track_id: trackId }),
+      // 楽観的更新：即座に削除を反映
+      setAddedTracks((prev) => {
+        const next = new Set(prev);
+        next.delete(trackId);
+        return next;
       });
 
-      if (res.ok) {
+      const rollbackAndShowError = (errorMessage: string) => {
+        setAddedTracks((prev) => new Set([...prev, trackId]));
         setToast({
-          message: "曲を追加しました",
-          type: "success",
-        });
-
-        // キャッシュを無効化してライブラリ/詳細のカウントや内容を更新
-        queryClient.invalidateQueries({ queryKey: ["playlists"] });
-        queryClient.invalidateQueries({ queryKey: ["playlist", playlistId] });
-      } else if (res.status === 409) {
-        setToast({
-          message: "既にこのプレイリストに追加されています",
+          message: errorMessage,
           type: "error",
         });
-      } else {
+      };
+
+      try {
+        const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ track_id: trackId }),
+        });
+
+        if (res.ok) {
+          setToast({
+            message: "曲を削除しました",
+            type: "success",
+          });
+
+          // キャッシュを無効化してライブラリ/詳細のカウントや内容を更新
+          queryClient.invalidateQueries({ queryKey: ["playlists"] });
+          queryClient.invalidateQueries({ queryKey: ["playlist", playlistId] });
+        } else {
+          // 失敗した場合はロールバック
+          rollbackAndShowError("削除に失敗しました");
+        }
+      } catch (err) {
+        console.error("Error removing track:", err);
+        // 失敗した場合はロールバック
+        rollbackAndShowError("エラーが発生しました");
+      }
+    } else {
+      // ADD TRACK
+
+      // 楽観的更新：即座に反映
+      setAddedTracks((prev) => new Set([...prev, trackId]));
+
+      const trackToReturn = tracksRef.current.find((t) => t.track_id === trackId);
+      if (trackToReturn && onSuccess) {
+        onSuccess(trackToReturn);
+      }
+
+      try {
+        const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ track_id: trackId }),
+        });
+
+        if (res.ok) {
+          setToast({
+            message: "曲を追加しました",
+            type: "success",
+          });
+
+          // キャッシュを無効化してライブラリ/詳細のカウントや内容を更新
+          queryClient.invalidateQueries({ queryKey: ["playlists"] });
+          queryClient.invalidateQueries({ queryKey: ["playlist", playlistId] });
+        } else if (res.status === 409) {
+          setToast({
+            message: "既にこのプレイリストに追加されています",
+            type: "error",
+          });
+        } else {
+          // 失敗した場合はロールバック
+          setAddedTracks((prev) => {
+            const next = new Set(prev);
+            next.delete(trackId);
+            return next;
+          });
+          setToast({
+            message: "追加に失敗しました",
+            type: "error",
+          });
+        }
+      } catch (err) {
+        console.error("Error adding track:", err);
         // 失敗した場合はロールバック
         setAddedTracks((prev) => {
           const next = new Set(prev);
@@ -185,78 +340,12 @@ export function SelectTrackModal({
           return next;
         });
         setToast({
-          message: "追加に失敗しました",
+          message: "エラーが発生しました",
           type: "error",
         });
       }
-    } catch (err) {
-      console.error("Error adding track:", err);
-      // 失敗した場合はロールバック
-      setAddedTracks((prev) => {
-        const next = new Set(prev);
-        next.delete(trackId);
-        return next;
-      });
-      setToast({
-        message: "エラーが発生しました",
-        type: "error",
-      });
     }
-  };
-
-  const handleRemoveTrack = async (trackId: number) => {
-    if (!addedTracks.has(trackId)) {
-      return;
-    }
-
-    // 楽観的更新：即座に削除を反映
-    setAddedTracks((prev) => {
-      const next = new Set(prev);
-      next.delete(trackId);
-      return next;
-    });
-
-    // 再生中なら停止
-    if (playingId === trackId) {
-      stopAudio();
-    }
-
-    const rollbackAndShowError = (errorMessage: string) => {
-      setAddedTracks((prev) => new Set([...prev, trackId]));
-      setToast({
-        message: errorMessage,
-        type: "error",
-      });
-    };
-
-    try {
-      const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ track_id: trackId }),
-      });
-
-      if (res.ok) {
-        setToast({
-          message: "曲を削除しました",
-          type: "success",
-        });
-
-        // キャッシュを無効化してライブラリ/詳細のカウントや内容を更新
-        queryClient.invalidateQueries({ queryKey: ["playlists"] });
-        queryClient.invalidateQueries({ queryKey: ["playlist", playlistId] });
-      } else {
-        // 失敗した場合はロールバック
-        rollbackAndShowError("削除に失敗しました");
-      }
-    } catch (err) {
-      console.error("Error removing track:", err);
-      // 失敗した場合はロールバック
-      rollbackAndShowError("エラーが発生しました");
-    }
-  };
+  }, [playlistId, queryClient, onSuccess, stopAudio]); // onSuccess is prop, might not be stable, but usually is. If not, add ref.
 
   if (!isOpen) return null;
 
@@ -292,69 +381,16 @@ export function SelectTrackModal({
               </div>
             ) : (
               <div className="grid gap-2">
-                {tracks.map((track) => {
-                  const trackId = track.track_id;
-                  const isAlreadyInPlaylist = addedTracks.has(trackId);
-
-                  return (
-                    <div
-                      key={track.track_id}
-                      className={`group flex w-full items-center gap-3 p-3 rounded-xl transition-all min-w-0 ${
-                        isAlreadyInPlaylist
-                          ? "bg-green-500/10"
-                          : "bg-secondary/50 hover:bg-secondary active:scale-[0.98]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted cursor-pointer border-0 p-0"
-                        onClick={(e) => handlePreviewClick(e, track)}
-                        aria-label={`プレビュー: ${track.track_name}`}
-                      >
-                        <Image
-                          src={track.artwork_url}
-                          alt={track.track_name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                        {playingId === trackId && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                            <Pause className="h-5 w-5 text-white fill-current" />
-                          </div>
-                        )}
-                      </button>
-                      <div className="flex-1 text-left min-w-0">
-                        <p className="font-medium truncate text-foreground text-sm">
-                          {track.track_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {track.artist_name}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          isAlreadyInPlaylist
-                            ? handleRemoveTrack(trackId)
-                            : handleAddTrack(trackId)
-                        }
-                        className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-                          isAlreadyInPlaylist
-                            ? "bg-green-500/20 hover:bg-green-500/30"
-                            : "bg-muted text-muted-foreground group-hover:bg-secondary-foreground/10 group-hover:text-foreground"
-                        }`}
-                        aria-label={isAlreadyInPlaylist ? "削除" : "追加"}
-                      >
-                        {isAlreadyInPlaylist ? (
-                          <Check className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <Music className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
+                {tracks.map((track) => (
+                  <TrackListItem
+                    key={track.track_id}
+                    track={track}
+                    isAdded={addedTracks.has(track.track_id)}
+                    isPlaying={playingId === track.track_id}
+                    onPreviewClick={handlePreviewClick}
+                    onToggleTrack={handleToggleTrack}
+                  />
+                ))}
               </div>
             )}
           </div>
