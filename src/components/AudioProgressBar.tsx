@@ -17,7 +17,6 @@ export function AudioProgressBar({ progress }: AudioProgressBarProps) {
       <div
         className="h-full bg-primary transition-all duration-300 ease-linear"
         style={{ width: `${clamped}%` }}
-        data-testid="audio-progress-bar__fill"
       />
     </div>
   );
