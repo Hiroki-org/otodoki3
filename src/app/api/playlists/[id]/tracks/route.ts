@@ -166,57 +166,20 @@ export async function PATCH(
     }
 
     // Update positions
-    // 1. Fetch existing tracks in the playlist to ensure we only update what exists
-    const { data: existingTracks, error: fetchError } = await supabase
-        .from('playlist_tracks')
-        .select('track_id')
-        .eq('playlist_id', id)
-        .in('track_id', numericTracks);
-
-    if (fetchError) {
-        console.error('Failed to fetch existing tracks:', fetchError);
-        return NextResponse.json({ error: 'Failed to verify tracks' }, { status: 500 });
-    }
-
-    // 2. Filter input to include only tracks that are currently in the playlist
-    const validTrackIds = new Set(existingTracks?.map((t) => Number(t.track_id)) || []);
-    const updateData = numericTracks
-        .map((trackId, originalIndex) => ({
-            trackId,
-            originalIndex,
-        }))
-        .filter(({ trackId }) => validTrackIds.has(trackId));
-
-    if (updateData.length === 0) {
-        return NextResponse.json({ success: true });
-    }
-
-    // 3. Update positions using individual updates to prevent race conditions
-    // Execute updates in parallel for better performance
-    const updatePromises = updateData.map(({ trackId, originalIndex }) =>
+    const updates = numericTracks.map((trackId, index) =>
         supabase
             .from('playlist_tracks')
-            .update({ position: originalIndex })
+            .update({ position: index })
             .eq('playlist_id', id)
             .eq('track_id', trackId)
-            .then((result) => {
-                if (result.error) {
-                    console.error('Failed to update track position:', {
-                        playlist_id: id,
-                        track_id: trackId,
-                        position: originalIndex,
-                        error: result.error,
-                    });
-                    throw result.error;
-                }
-                return result;
-            })
     );
 
-    try {
-        await Promise.all(updatePromises);
-    } catch {
-        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+    const results = await Promise.all(updates);
+    const errors = results.filter(r => r.error);
+
+    if (errors.length > 0) {
+        console.error('Failed to update some track positions:', errors);
+        return NextResponse.json({ error: 'Failed to update order completely' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
