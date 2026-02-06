@@ -57,19 +57,23 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
                 console.warn(`Invalid track_id: ${row.track_id}`);
                 return null;
             }
-            return {
-            type: 'track',
-            track_id: trackId,
-            track_name: row.track_name,
-            artist_name: row.artist_name,
-            collection_name: row.collection_name ?? undefined,
-            preview_url: row.preview_url,
-            artwork_url: row.artwork_url ?? undefined,
-            track_view_url: row.track_view_url ?? undefined,
-            genre: row.genre ?? undefined,
-            release_date: row.release_date ?? undefined,
-            metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
+            const track: Track = {
+                type: 'track',
+                track_id: trackId,
+                track_name: row.track_name,
+                artist_name: row.artist_name,
+                collection_name: row.collection_name ?? undefined,
+                preview_url: row.preview_url,
+                artwork_url: row.artwork_url ?? undefined,
+                track_view_url: row.track_view_url ?? undefined,
+                genre: row.genre ?? undefined,
+                release_date: row.release_date ?? undefined,
+                metadata:
+                    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+                        ? (row.metadata as Record<string, unknown>)
+                        : undefined,
             };
+            return track;
         }).filter((track): track is Track => track !== null);
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
