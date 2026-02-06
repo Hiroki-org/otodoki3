@@ -70,7 +70,7 @@ export async function getTracksFromPool(count: number): Promise<Track[]> {
             release_date: row.release_date ?? undefined,
             metadata: row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? (row.metadata as Record<string, unknown>) : undefined,
             };
-        }).filter((track) => track !== null) as Track[];
+        }).filter((track): track is Track => track !== null);
     } catch (error) {
         console.error('Error in getTracksFromPool:', error);
         throw error;

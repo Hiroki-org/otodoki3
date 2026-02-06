@@ -73,6 +73,7 @@ describe('usePlaylists', () => {
             ok: false,
             status: 500,
             statusText: 'Internal Server Error',
+            json: async () => ({ error: 'Internal Server Error' }),
         });
 
         const { result } = renderHook(() => usePlaylists(), {
