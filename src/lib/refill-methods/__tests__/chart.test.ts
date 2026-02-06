@@ -23,26 +23,27 @@ function setupFetchMocks(
                 ok: true,
                 status: 200,
                 json: async () => appleRssResponse,
-            });
+                text: async () => JSON.stringify(appleRssResponse),
+            } as Response);
         }
         // iTunes Search API のモック
         if (urlString.includes('itunes.apple.com/lookup')) {
-            const urlObj = new URL(urlString);
-            const trackId = urlObj.searchParams.get('id');
+            const trackId = new URL(urlString).searchParams.get('id');
             if (trackId && itunesSearchResponses[trackId]) {
                 return Promise.resolve({
                     ok: true,
                     status: 200,
                     json: async () => itunesSearchResponses[trackId],
-                });
+                    text: async () => JSON.stringify(itunesSearchResponses[trackId]),
+                } as Response);
             }
-            console.warn(`Mock iTunes API: Track ID not found for URL: ${urlString} (extracted id: ${trackId})`);
             // トラックIDが見つからない場合は空のレスポンス
             return Promise.resolve({
                 ok: true,
                 status: 200,
                 json: async () => ({ results: [] }),
-            });
+                text: async () => JSON.stringify({ results: [] }),
+            } as Response);
         }
         return Promise.reject(new Error('Unexpected URL'));
     });
@@ -220,10 +221,6 @@ describe('fetchTracksFromChart', () => {
         it('should use timeout mechanism with AbortController', async () => {
             let abortSignal: AbortSignal | undefined;
 
-            // Set up default mock behavior first
-            setupFetchMocks(fetchMock);
-
-            // Override the first call to capture signal
             fetchMock.mockImplementationOnce((url, options) => {
                 abortSignal = (options as RequestInit).signal as AbortSignal;
                 return Promise.resolve({
