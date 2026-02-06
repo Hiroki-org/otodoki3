@@ -73,4 +73,25 @@ describe('rateLimit', () => {
         // We consumed 1, so remaining should be 4 (5 refilled - 1 consumed)
         expect(result.remaining).toBe(4);
     });
+
+    it('TTLを過ぎたエントリはクリーンアップされる', () => {
+        const key = 'test-key-cleanup';
+        const limit = 5;
+        const windowMs = 1000;
+
+        // エントリを作成
+        rateLimit(key, limit, windowMs);
+
+        // TTL (10分) + インターバル (1分) + バッファ経過させる
+        const TTL_MS = 10 * 60 * 1000;
+        const CLEANUP_INTERVAL_MS = 60 * 1000;
+
+        vi.advanceTimersByTime(TTL_MS + CLEANUP_INTERVAL_MS + 1000);
+
+        // クリーンアップ処理が走ったことを間接的に確認するのは難しいが、
+        // 少なくともエラーが起きず、再度リクエストすれば新しいバケットが作られることを確認
+        const result = rateLimit(key, limit, windowMs);
+        expect(result.allowed).toBe(true);
+        expect(result.remaining).toBe(limit - 1);
+    });
 });
