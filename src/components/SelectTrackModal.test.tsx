@@ -24,25 +24,34 @@ const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 // next/imageのモック
-vi.mock('next/image', () => ({
-  default: (props: any) => {
+vi.mock('next/image', () => {
+  const MockImage = (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img {...props} />;
-  },
-}));
+    return <img {...props} alt={props.alt || ''} />;
+  };
+  MockImage.displayName = 'MockImage';
+  return { default: MockImage };
+});
 
 // Toastのモック
-vi.mock('./Toast', () => ({
-  Toast: ({ message }: { message: string }) => <div>{message}</div>,
-}));
+vi.mock('./Toast', () => {
+  const MockToast = ({ message }: { message: string }) => <div>{message}</div>;
+  MockToast.displayName = 'MockToast';
+  return { Toast: MockToast };
+});
 
 // lucide-reactのモック
-vi.mock('lucide-react', () => ({
-  X: () => <svg data-testid="icon-x" />,
-  Music: () => <svg data-testid="icon-music" />,
-  Check: () => <svg data-testid="icon-check" />,
-  Pause: () => <svg data-testid="icon-pause" />,
-}));
+vi.mock('lucide-react', () => {
+  const X = () => <svg data-testid="icon-x" />;
+  X.displayName = 'X';
+  const Music = () => <svg data-testid="icon-music" />;
+  Music.displayName = 'Music';
+  const Check = () => <svg data-testid="icon-check" />;
+  Check.displayName = 'Check';
+  const Pause = () => <svg data-testid="icon-pause" />;
+  Pause.displayName = 'Pause';
+  return { X, Music, Check, Pause };
+});
 
 // クエリクライアントのセットアップ
 const createWrapper = () => {
@@ -53,9 +62,11 @@ const createWrapper = () => {
       },
     },
   });
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'Wrapper';
+  return Wrapper;
 };
 
 describe('SelectTrackModal', () => {

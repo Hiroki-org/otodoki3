@@ -9,16 +9,22 @@ const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 // Toastのモック
-vi.mock('./Toast', () => ({
-  Toast: ({ message }: { message: string }) => <div>{message}</div>,
-}));
+vi.mock('./Toast', () => {
+  const MockToast = ({ message }: { message: string }) => <div>{message}</div>;
+  MockToast.displayName = 'MockToast';
+  return { Toast: MockToast };
+});
 
 // lucide-reactのモック
-vi.mock('lucide-react', () => ({
-  X: () => <svg data-testid="icon-x" />,
-  Music: () => <svg data-testid="icon-music" />,
-  ChevronRight: () => <svg data-testid="icon-chevron-right" />,
-}));
+vi.mock('lucide-react', () => {
+  const X = () => <svg data-testid="icon-x" />;
+  X.displayName = 'X';
+  const Music = () => <svg data-testid="icon-music" />;
+  Music.displayName = 'Music';
+  const ChevronRight = () => <svg data-testid="icon-chevron-right" />;
+  ChevronRight.displayName = 'ChevronRight';
+  return { X, Music, ChevronRight };
+});
 
 // クエリクライアントのセットアップ
 const createWrapper = () => {
@@ -29,9 +35,11 @@ const createWrapper = () => {
       },
     },
   });
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'Wrapper';
+  return Wrapper;
 };
 
 // モックデータ
