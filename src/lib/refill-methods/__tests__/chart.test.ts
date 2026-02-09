@@ -244,6 +244,61 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(3);
         });
     });
+
+    describe('iTunes API エラーハンドリング', () => {
+        it('iTunes APIのタイムアウト（AbortError）を適切に処理する', async () => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    const error = new Error('The operation was aborted');
+                    error.name = 'AbortError';
+                    return Promise.reject(error);
+                }
+                return Promise.reject(new Error('Unexpected URL'));
+            });
+
+            const consoleSpy = vi.spyOn(console, 'warn');
+            const tracks = await fetchTracksFromChart(10);
+
+            // All tracks skipped because of timeout
+            expect(tracks).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('iTunes API lookup timeout'));
+        });
+
+        it('iTunes APIのその他のエラーを適切に処理する', async () => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    return Promise.reject(new Error('Generic API error'));
+                }
+                return Promise.reject(new Error('Unexpected URL'));
+            });
+
+            const consoleSpy = vi.spyOn(console, 'warn');
+            const tracks = await fetchTracksFromChart(10);
+
+            // All tracks skipped because of error
+            expect(tracks).toHaveLength(0);
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('iTunes API lookup error'),
+                expect.any(Error)
+            );
+        });
+    });
 });
 
 describe('fetchTracksFromChartWithRetry', () => {
