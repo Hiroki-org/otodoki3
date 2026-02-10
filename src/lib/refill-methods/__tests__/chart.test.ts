@@ -244,6 +244,122 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(3);
         });
     });
+
+    describe('iTunes Search API エラーハンドリング', () => {
+        beforeEach(() => {
+            // Suppress console.warn for error handling tests
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+        });
+
+        it('iTunes APIが500エラーを返した場合、そのトラックをスキップすべき', async () => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    // Fail for the first track (2001)
+                    if (urlString.includes('id=2001')) {
+                        return Promise.resolve({
+                            ok: false,
+                            status: 500,
+                            statusText: 'Internal Server Error',
+                        } as Response);
+                    }
+                    // Success for others
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                        } as Response);
+                    }
+                }
+                return Promise.reject(new Error('Unexpected URL'));
+            });
+
+            const tracks = await fetchTracksFromChart(10);
+
+            // Should have 2 tracks (original 3 - 1 failed)
+            expect(tracks).toHaveLength(2);
+            expect(tracks.map(t => t.track_id)).not.toContain(2001);
+        });
+
+        it('iTunes APIがタイムアウト（AbortError）した場合、そのトラックをスキップすべき', async () => {
+             fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    // Timeout for the first track (2001)
+                    if (urlString.includes('id=2001')) {
+                        const error = new Error('The operation was aborted');
+                        error.name = 'AbortError';
+                        return Promise.reject(error);
+                    }
+                    // Success for others
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                        } as Response);
+                    }
+                }
+                return Promise.reject(new Error('Unexpected URL'));
+            });
+
+            const tracks = await fetchTracksFromChart(10);
+
+            expect(tracks).toHaveLength(2);
+            expect(tracks.map(t => t.track_id)).not.toContain(2001);
+        });
+
+        it('iTunes APIがネットワークエラーを投げた場合、そのトラックをスキップすべき', async () => {
+             fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    // Network error for the first track (2001)
+                    if (urlString.includes('id=2001')) {
+                        return Promise.reject(new Error('Network Error'));
+                    }
+                    // Success for others
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                        } as Response);
+                    }
+                }
+                return Promise.reject(new Error('Unexpected URL'));
+            });
+
+            const tracks = await fetchTracksFromChart(10);
+
+            expect(tracks).toHaveLength(2);
+            expect(tracks.map(t => t.track_id)).not.toContain(2001);
+        });
+    });
 });
 
 describe('fetchTracksFromChartWithRetry', () => {
