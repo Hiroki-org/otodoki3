@@ -112,5 +112,35 @@ describe('src/lib/supabase.ts', () => {
     // スタブクライアントのメソッドが存在することを確認
     expect(supabase).toHaveProperty('from');
     expect(supabase).toHaveProperty('select');
+    expect(supabase).toHaveProperty('order');
+    expect(supabase).toHaveProperty('limit');
+    expect(supabase).toHaveProperty('upsert');
+    expect(supabase).toHaveProperty('delete');
+    expect(supabase).toHaveProperty('rpc');
+
+    // スタブの動作確認
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stub = supabase as any as StubClient;
+
+    expect(stub.from('table')).toBe(supabase);
+    expect(stub.order()).toBe(supabase);
+
+    const selectResult = await stub.select();
+    expect(selectResult).toEqual({ data: null, error: null });
+
+    const limitResult = stub.limit();
+    expect(limitResult).toEqual({ data: null, error: null });
+
+    const upsertResult = await stub.upsert();
+    expect(upsertResult).toEqual({ error: null });
+
+    const deleteResult = await stub.delete();
+    expect(deleteResult).toEqual({ error: null });
+
+    const rpcResult = await stub.rpc().maybeSingle();
+    expect(rpcResult).toEqual({
+        data: null,
+        error: { code: 'PGRST202', message: 'function not found' }
+    });
   });
 });
