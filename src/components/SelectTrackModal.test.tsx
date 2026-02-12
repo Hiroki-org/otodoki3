@@ -11,9 +11,9 @@ vi.mock('next/image', () => ({
 
 // framer-motion のモック
 vi.mock('framer-motion', () => ({
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+        div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
     },
 }));
 

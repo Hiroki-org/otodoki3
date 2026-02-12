@@ -16,9 +16,11 @@ const createTestQueryClient = () => new QueryClient({
 // テスト用のラッパーコンポーネント
 const createWrapper = () => {
     const queryClient = createTestQueryClient();
-    return ({ children }: { children: React.ReactNode }) => (
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
+    Wrapper.displayName = 'TestQueryClientProvider';
+    return Wrapper;
 };
 
 describe('usePlaylists', () => {
@@ -93,7 +95,7 @@ describe('usePlaylists', () => {
 
         expect(result.current.error).toBeInstanceOf(Error);
         expect((result.current.error as Error).message).toBe('Failed to fetch playlists');
-        expect((result.current.error as any).status).toBe(500);
+        expect((result.current.error as Error & { status?: number }).status).toBe(500);
     });
 
     it('異常系: ネットワークエラー時にエラーをスローすること', async () => {
