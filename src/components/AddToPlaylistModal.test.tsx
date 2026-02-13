@@ -8,7 +8,7 @@ import React from 'react';
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.PropsWithChildren<object>) => <div {...props}>{children}</div>,
   },
 }));
 
