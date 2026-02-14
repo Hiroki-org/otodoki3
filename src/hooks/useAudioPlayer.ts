@@ -100,12 +100,12 @@ export function useAudioPlayer() {
             // Best-effort to leave the element in a safe state
             try {
                 audio.pause();
-            } catch (_) {
+            } catch {
                 /* ignore */
             }
             try {
                 audio.src = "";
-            } catch (_) {
+            } catch {
                 /* ignore */
             }
         }
@@ -120,12 +120,12 @@ export function useAudioPlayer() {
             // Ensure the element is not pointing to a broken src
             try {
                 audio.pause();
-            } catch (_) {
+            } catch {
                 /* ignore */
             }
             try {
                 audio.src = "";
-            } catch (_) {
+            } catch {
                 /* ignore */
             }
         }

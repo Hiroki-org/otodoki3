@@ -6,6 +6,7 @@ import { SelectTrackModal } from './SelectTrackModal';
 
 // Mock next/image
 vi.mock('next/image', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     default: (props: any) => {
         // eslint-disable-next-line @next/next/no-img-element
         return <img {...props} alt={props.alt} />;
@@ -16,6 +17,7 @@ vi.mock('next/image', () => ({
 vi.mock('framer-motion', () => ({
     AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     motion: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     },
 }));

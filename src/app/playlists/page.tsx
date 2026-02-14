@@ -8,14 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
 import { usePlaylists } from "@/hooks/usePlaylists";
 
-type Playlist = {
-  id: string;
-  name: string;
-  icon: string;
-  count: number;
-  is_default?: boolean;
-};
-
 const PlaylistIcon = ({ id, icon }: { id: string; icon?: string }) => {
   switch (id) {
     case "likes":

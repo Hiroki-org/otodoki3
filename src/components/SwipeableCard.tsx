@@ -150,7 +150,7 @@ export const SwipeableCard = forwardRef<SwipeableCardRef, SwipeableCardProps>(
           scheduleSwipeCompletion("right");
         },
       }),
-      [isTop, item, onSwipe, scheduleSwipeCompletion, x]
+      [isTop, scheduleSwipeCompletion, x]
     );
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
