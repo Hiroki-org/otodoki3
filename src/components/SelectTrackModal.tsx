@@ -200,7 +200,8 @@ export function SelectTrackModal({
     if (isOpen) {
       setAddedTracks(new Set(existingTrackIds));
     }
-  }, [isOpen, existingTrackIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, JSON.stringify(existingTrackIds)]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
