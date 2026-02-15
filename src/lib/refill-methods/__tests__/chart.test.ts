@@ -181,6 +181,84 @@ describe('fetchTracksFromChart', () => {
 
             expect(tracks).toEqual([]);
         });
+
+        it('iTunes APIがエラー（500）を返した場合、そのトラックをスキップする', async () => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    // Fail for the first track
+                    if (urlString.includes('id=2001')) {
+                        return Promise.resolve({
+                            ok: false,
+                            status: 500,
+                            statusText: 'Internal Server Error',
+                        } as Response);
+                    }
+                    // Succeed for others
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                            text: async () => JSON.stringify(mockItunesSearchResponses[trackId]),
+                        } as Response);
+                    }
+                }
+                return Promise.resolve({ ok: true, json: async () => ({ results: [] }) } as Response);
+            });
+
+            const tracks = await fetchTracksFromChart(10);
+
+            // Should have 2 tracks (skipped 2001)
+            expect(tracks).toHaveLength(2);
+            expect(tracks.map((t) => t.track_id)).not.toContain(2001);
+        });
+
+        it('iTunes APIがタイムアウトした場合、そのトラックをスキップする', async () => {
+            fetchMock.mockImplementation((url: string | URL) => {
+                const urlString = url.toString();
+                if (urlString.includes('rss.applemarketingtools.com')) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: async () => mockAppleRssResponse,
+                    } as Response);
+                }
+                if (urlString.includes('itunes.apple.com/lookup')) {
+                    if (urlString.includes('id=2001')) {
+                        // Simulate timeout error
+                        const error = new Error('The operation was aborted');
+                        error.name = 'AbortError';
+                        return Promise.reject(error);
+                    }
+                    // Succeed for others
+                    const trackId = new URL(urlString).searchParams.get('id');
+                    if (trackId && mockItunesSearchResponses[trackId]) {
+                        return Promise.resolve({
+                            ok: true,
+                            status: 200,
+                            json: async () => mockItunesSearchResponses[trackId],
+                            text: async () => JSON.stringify(mockItunesSearchResponses[trackId]),
+                        } as Response);
+                    }
+                }
+                return Promise.resolve({ ok: true, json: async () => ({ results: [] }) } as Response);
+            });
+
+            const tracks = await fetchTracksFromChart(10);
+
+            // Should have 2 tracks (skipped 2001)
+            expect(tracks).toHaveLength(2);
+            expect(tracks.map((t) => t.track_id)).not.toContain(2001);
+        });
     });
 
     describe('エラーハンドリング', () => {
