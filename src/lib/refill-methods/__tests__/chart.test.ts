@@ -244,6 +244,91 @@ describe('fetchTracksFromChart', () => {
             expect(tracks).toHaveLength(3);
         });
     });
+
+    describe('iTunes Search API 連携のエッジケース', () => {
+        it('iTunes APIのタイムアウト(AbortError)を適切に処理し、該当トラックをスキップすること', async () => {
+            // Apple RSS returns valid tracks
+            fetchMock.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => mockAppleRssResponse,
+            } as Response);
+
+            // iTunes API throws AbortError for the first track
+            fetchMock.mockRejectedValueOnce({ name: 'AbortError' });
+
+            // Allow subsequent calls to succeed (or fail, doesn't matter as we check if it continues)
+            fetchMock.mockResolvedValue({
+                 ok: true,
+                 status: 200,
+                 json: async () => ({ results: [] }), // No preview url, so skipped
+            } as Response);
+
+            const tracks = await fetchTracksFromChart(3);
+
+            // Should skip the track with timeout and continue
+            // Since we mocked the rest to return empty results (no preview), we expect 0 tracks
+            // or if we setupFetchMocks correctly for others...
+            // Let's simplify: AbortError should be caught and logged, returning null previewUrl, thus skipping track
+            expect(tracks).toEqual([]);
+        });
+
+        it('iTunes APIのエラーステータスを適切に処理し、該当トラックをスキップすること', async () => {
+            fetchMock.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => mockAppleRssResponse,
+            } as Response);
+
+            // iTunes API returns 500
+            fetchMock.mockResolvedValueOnce({
+                ok: false,
+                status: 500,
+            } as Response);
+
+             // Allow subsequent calls
+            fetchMock.mockResolvedValue({
+                 ok: true,
+                 status: 200,
+                 json: async () => ({ results: [] }),
+            } as Response);
+
+            const tracks = await fetchTracksFromChart(3);
+            expect(tracks).toEqual([]);
+        });
+
+        it('iTunes APIの一般的なエラーを適切に処理し、該当トラックをスキップすること', async () => {
+            // Apple RSS returns valid tracks
+            fetchMock.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => mockAppleRssResponse,
+            } as Response);
+
+            // iTunes API throws generic Error
+            fetchMock.mockRejectedValueOnce(new Error('Some random error'));
+
+             // Allow subsequent calls
+            fetchMock.mockResolvedValue({
+                 ok: true,
+                 status: 200,
+                 json: async () => ({ results: [] }),
+            } as Response);
+
+            const tracks = await fetchTracksFromChart(3);
+            expect(tracks).toEqual([]);
+        });
+    });
+
+    describe('RSS Fetch Abort Handling', () => {
+        it('RSS取得時のAbortErrorに対して特定のエラーメッセージを投げること', async () => {
+             const abortError = new Error('Aborted');
+             abortError.name = 'AbortError';
+             fetchMock.mockRejectedValueOnce(abortError);
+
+             await expect(fetchTracksFromChart(10)).rejects.toThrow('Request to Apple RSS Charts API timed out.');
+        });
+    });
 });
 
 describe('fetchTracksFromChartWithRetry', () => {
