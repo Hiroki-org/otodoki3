@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from './route';
+import { POST, PATCH } from './route';
 import { createMockSupabaseClient, mockAuthenticatedUser } from '@/test/api-test-utils';
 import { NextRequest } from 'next/server';
 
@@ -101,5 +101,112 @@ describe('POST /api/playlists/[id]/tracks', () => {
 
         expect(response.status).toBe(409);
         expect(data.error).toBe('Track already in playlist');
+    });
+});
+
+describe('PATCH /api/playlists/[id]/tracks', () => {
+    let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockSupabase = createMockSupabaseClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
+    });
+
+    it('should reorder tracks successfully', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock update (called twice, once for each track)
+        mockSupabase.mockUpdate.mockResolvedValue({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: ['12345', '67890'] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+
+        // Verify update was called twice with correct positions
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(2);
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(1, { position: 0 });
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(2, { position: 1 });
+    });
+
+    it('should update all provided tracks including unknown ones', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        // Mock update (implementation calls update for all tracks)
+        mockSupabase.mockUpdate.mockResolvedValue({
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: ['12345', '99999'] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+
+        // Implementation updates position for all provided tracks
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(2);
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(1, { position: 0 });
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(2, { position: 1 });
+    });
+
+    it('should return 200 with empty tracks array (no updates needed)', async () => {
+        mockSupabase.auth.getUser.mockResolvedValue({
+            data: { user: mockAuthenticatedUser },
+            error: null,
+        });
+
+        // verifyPlaylistOwnership
+        mockSupabase.mockSingle.mockResolvedValueOnce({
+            data: { id: 'playlist-1' },
+            error: null,
+        });
+
+        const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
+            method: 'PATCH',
+            body: JSON.stringify({ tracks: [] }),
+        });
+
+        const params = Promise.resolve({ id: 'playlist-1' });
+        const response = await PATCH(req, { params });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(mockSupabase.mockUpdate).not.toHaveBeenCalled();
     });
 });
