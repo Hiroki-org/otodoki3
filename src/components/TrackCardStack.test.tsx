@@ -46,24 +46,20 @@ const mockFetch = vi.fn();
 
 const mockTracks: Track[] = [
   {
-    id: 1,
+    type: 'track',
     track_id: 101,
     artist_name: 'Artist 1',
     track_name: 'Track 1',
     preview_url: 'https://example.com/preview1.mp3',
     artwork_url: 'https://example.com/artwork1.jpg',
-    weight: 1,
-    fetched_at: new Date().toISOString(),
   },
   {
-    id: 2,
+    type: 'track',
     track_id: 102,
     artist_name: 'Artist 2',
     track_name: 'Track 2',
     preview_url: 'https://example.com/preview2.mp3',
     artwork_url: 'https://example.com/artwork2.jpg',
-    weight: 1,
-    fetched_at: new Date().toISOString(),
   },
 ];
 

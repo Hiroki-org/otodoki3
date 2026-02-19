@@ -9,6 +9,7 @@ describe('rateLimit cleanup', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.unstubAllEnvs();
+        vi.restoreAllMocks();
     });
 
     it('古いバケットが正しくクリーンアップされること', async () => {

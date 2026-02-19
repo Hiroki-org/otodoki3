@@ -129,5 +129,6 @@ tracks could be re-inserted. Parallel updates are safer.
 
         // Both should be reasonably fast, we're just documenting the tradeoff
         expect(timeParallel).toBeLessThan(500); // Should complete in reasonable time
+        expect(timeBulk).toBeLessThan(500);
     });
 });
