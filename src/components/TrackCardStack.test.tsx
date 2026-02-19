@@ -19,20 +19,25 @@ vi.mock('@tanstack/react-query', () => ({
 // SwipeableCard のモック
 vi.mock('./SwipeableCard', async () => {
   const React = await import('react');
+  const MockSwipeableCard = React.forwardRef((
+    { item, onSwipe, isTop, index }: { item: { track_name?: string }; onSwipe: (dir: string, item: unknown) => void; isTop: boolean; index: number },
+    ref: React.Ref<{ swipeLeft: () => void; swipeRight: () => void }>
+  ) => {
+    React.useImperativeHandle(ref, () => ({
+      swipeLeft: () => onSwipe('left', item),
+      swipeRight: () => onSwipe('right', item),
+    }));
+    return (
+      <div data-testid={`card-${index}`} aria-label={item.track_name ? `${item.track_name}をスワイプ` : 'チュートリアルカードをスワイプ'}>
+        {item.track_name || 'Tutorial'}
+        {isTop && <button onClick={() => onSwipe('right', item)}>Swipe Right</button>}
+        {isTop && <button onClick={() => onSwipe('left', item)}>Swipe Left</button>}
+      </div>
+    );
+  });
+  MockSwipeableCard.displayName = 'SwipeableCard';
   return {
-    SwipeableCard: React.forwardRef(({ item, onSwipe, isTop, index }: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({
-        swipeLeft: () => onSwipe('left', item),
-        swipeRight: () => onSwipe('right', item),
-      }));
-      return (
-        <div data-testid={`card-${index}`} aria-label={item.track_name ? `${item.track_name}をスワイプ` : 'チュートリアルカードをスワイプ'}>
-          {item.track_name || 'Tutorial'}
-          {isTop && <button onClick={() => onSwipe('right', item)}>Swipe Right</button>}
-          {isTop && <button onClick={() => onSwipe('left', item)}>Swipe Left</button>}
-        </div>
-      );
-    }),
+    SwipeableCard: MockSwipeableCard,
   };
 });
 
@@ -77,7 +82,7 @@ describe('TrackCardStack', () => {
     vi.useRealTimers();
     vi.stubGlobal('fetch', mockFetch);
 
-    (useAudioPlayer as any).mockReturnValue({
+    vi.mocked(useAudioPlayer).mockReturnValue({
       play: mockPlay,
       stop: mockStop,
       pause: mockPause,
@@ -87,20 +92,21 @@ describe('TrackCardStack', () => {
       progress: 0,
     });
 
-    (useAutoRefill as any).mockReturnValue({
+    vi.mocked(useAutoRefill).mockReturnValue({
       isRefilling: false,
       error: null,
       clearError: vi.fn(),
     });
 
-    (useToast as any).mockReturnValue({
+    vi.mocked(useToast).mockReturnValue({
       push: mockPushToast,
       dismiss: vi.fn(),
     });
 
-    (useQueryClient as any).mockReturnValue({
+    vi.mocked(useQueryClient).mockReturnValue({
       invalidateQueries: mockInvalidateQueries,
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     mockFetch.mockResolvedValue({
       ok: true,
