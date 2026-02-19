@@ -86,7 +86,9 @@ describe('TrackCardStack', () => {
         mockPushToast.mockReset();
 
         // Reset audio player mocks
-        Object.values(mockAudioPlayer).forEach(mock => mock.mockReset());
+        Object.values(mockAudioPlayer).forEach(mock => {
+            mock.mockReset();
+        });
 
         // Setup default fetch response
         mockFetch.mockResolvedValue({
@@ -112,7 +114,7 @@ describe('TrackCardStack', () => {
         renderComponent();
 
         // チュートリアルカードが表示されていることを確認
-        expect(screen.getByLabelText('チュートリアルカードをスワイプ')).toBeInTheDocument();
+        expect(screen.getByLabelText('チュートリアルカード')).toBeInTheDocument();
 
         // コントロールボタンが表示されていることを確認
         expect(screen.getByLabelText('いいね')).toBeInTheDocument();
