@@ -37,7 +37,7 @@ describe('rateLimit cleanup', () => {
         expect(mapDeleteSpy).toHaveBeenCalledWith(key);
     });
 
-    it('アクティブなバケットはクリーンアップされないこと', async () => {
+    it('アクセスによるリフレッシュでバケットがクリーンアップされないこと', async () => {
         const mapDeleteSpy = vi.spyOn(Map.prototype, 'delete');
         const { rateLimit } = await import('./rateLimiter');
 
@@ -45,25 +45,27 @@ describe('rateLimit cleanup', () => {
         const limit = 5;
         const windowMs = 1000;
 
+        const TTL_MS = 10 * 60 * 1000;
+        const CLEANUP_INTERVAL_MS = 60 * 1000;
+
         // バケットを作成
         rateLimit(key, limit, windowMs);
 
-        // TTL 未満の時間経過
-        const TTL_MS = 10 * 60 * 1000;
-
-        // TTL の半分だけ進める
-        await vi.advanceTimersByTimeAsync(TTL_MS / 2);
+        // TTL - 1分 まで進める（まだTTLに達していない）
+        await vi.advanceTimersByTimeAsync(TTL_MS - CLEANUP_INTERVAL_MS);
 
         // まだ削除されていないはず
         expect(mapDeleteSpy).not.toHaveBeenCalledWith(key);
 
-        // アクセスして lastRefill を更新
+        // アクセスして lastRefill を更新（リフレッシュ）
         rateLimit(key, limit, windowMs);
 
-        // さらに時間を進める (合計で TTL を超えるが、更新があったので削除されないはず)
-        await vi.advanceTimersByTimeAsync(TTL_MS / 2 + 1000);
+        // リフレッシュ後にTTL + CLEANUP_INTERVAL以上進める
+        // リフレッシュなしなら合計 TTL*2 > TTL なので削除されるはずだが
+        // リフレッシュにより lastRefill が更新されたので削除されない
+        await vi.advanceTimersByTimeAsync(TTL_MS - CLEANUP_INTERVAL_MS);
 
-        // 削除されていないことを確認 (厳密には古いキーが消えていないか)
+        // リフレッシュがあったので、削除されていないことを確認
         expect(mapDeleteSpy).not.toHaveBeenCalledWith(key);
     });
 });

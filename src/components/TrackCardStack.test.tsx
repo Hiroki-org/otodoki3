@@ -209,7 +209,7 @@ describe('TrackCardStack', () => {
     expect(screen.getByText(/今日のディスカバリーはここまで/)).toBeInTheDocument();
   });
 
-  it('外部ボタン（いいね/よくない）クリックでスワイプがトリガーされること', async () => {
+  it('外部ボタン（いいね）クリックでスワイプがトリガーされること', async () => {
      render(<TrackCardStack tracks={mockTracks} />);
 
      const likeButton = screen.getByLabelText('いいね');
