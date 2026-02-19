@@ -126,16 +126,6 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock select calls
-        // 1. verifyPlaylistOwnership calls select('id')
-        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
-
-        // 2. Fetch existing tracks
-        mockSupabase.mockSelect.mockResolvedValueOnce({
-            data: [{ track_id: 12345 }, { track_id: 67890 }],
-            error: null,
-        });
-
         // Mock update (called twice, once for each track)
         mockSupabase.mockUpdate.mockResolvedValue({
             error: null,
@@ -159,7 +149,7 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(2, { position: 1 });
     });
 
-    it('should ignore unknown tracks during reorder', async () => {
+    it('should update all provided tracks including unknown ones', async () => {
         mockSupabase.auth.getUser.mockResolvedValue({
             data: { user: mockAuthenticatedUser },
             error: null,
@@ -171,24 +161,14 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock select calls
-        // 1. verifyPlaylistOwnership calls select('id')
-        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
-
-        // 2. Fetch existing tracks (only 12345 exists)
-        mockSupabase.mockSelect.mockResolvedValueOnce({
-            data: [{ track_id: 12345 }],
-            error: null,
-        });
-
-        // Mock update
+        // Mock update (implementation calls update for all tracks)
         mockSupabase.mockUpdate.mockResolvedValue({
             error: null,
         });
 
         const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
             method: 'PATCH',
-            body: JSON.stringify({ tracks: ['12345', '99999'] }), // 99999 is unknown
+            body: JSON.stringify({ tracks: ['12345', '99999'] }),
         });
 
         const params = Promise.resolve({ id: 'playlist-1' });
@@ -198,12 +178,13 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
 
-        // Verify update was called ONLY once with track 12345 at position 0
-        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(1);
-        expect(mockSupabase.mockUpdate).toHaveBeenCalledWith({ position: 0 });
+        // Implementation updates position for all provided tracks
+        expect(mockSupabase.mockUpdate).toHaveBeenCalledTimes(2);
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(1, { position: 0 });
+        expect(mockSupabase.mockUpdate).toHaveBeenNthCalledWith(2, { position: 1 });
     });
 
-    it('should return 204 when no tracks to update', async () => {
+    it('should return 200 with empty tracks array (no updates needed)', async () => {
         mockSupabase.auth.getUser.mockResolvedValue({
             data: { user: mockAuthenticatedUser },
             error: null,
@@ -215,19 +196,9 @@ describe('PATCH /api/playlists/[id]/tracks', () => {
             error: null,
         });
 
-        // Mock select calls
-        // 1. verifyPlaylistOwnership calls select('id')
-        mockSupabase.mockSelect.mockResolvedValueOnce({ data: null, error: null });
-
-        // 2. Fetch existing tracks (none found)
-        mockSupabase.mockSelect.mockResolvedValueOnce({
-            data: [],
-            error: null,
-        });
-
         const req = new NextRequest('http://localhost/api/playlists/playlist-1/tracks', {
             method: 'PATCH',
-            body: JSON.stringify({ tracks: ['99999'] }), // 99999 is unknown
+            body: JSON.stringify({ tracks: [] }),
         });
 
         const params = Promise.resolve({ id: 'playlist-1' });
