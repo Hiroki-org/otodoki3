@@ -54,5 +54,13 @@
     "ts-jest": "^29.1.2",
     "typescript": "^5",
     "vitest": "4.0.16"
+  },
+  "overrides": {
+    "terser-webpack-plugin": {
+      "serialize-javascript": "7.0.5"
+    },
+    "@rollup/plugin-terser": {
+      "serialize-javascript": "7.0.5"
+    }
   }
 }
