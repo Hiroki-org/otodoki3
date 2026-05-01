@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup Supabase CLI with retry
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
         continue-on-error: true
@@ -31,7 +31,7 @@ jobs:
 
       - name: Retry Supabase CLI setup if needed
         if: steps.setup-supabase-1.outcome == 'failure'
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
 
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup Supabase CLI with retry
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
         continue-on-error: true
@@ -106,7 +106,7 @@ jobs:
 
       - name: Retry Supabase CLI setup if needed
         if: steps.setup-supabase-1.outcome == 'failure'
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
 
