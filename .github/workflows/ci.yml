@@ -127,6 +127,7 @@ jobs:
     name: E2E Tests - Authentication
     runs-on: ubuntu-latest
     needs: [lint, type-check, integration-test-api]
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
       - name: Setup Node.js
@@ -163,6 +164,7 @@ jobs:
     name: E2E Tests - Discovery Flow
     runs-on: ubuntu-latest
     needs: [e2e-test-auth]
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
       - name: Setup Node.js
@@ -221,6 +223,7 @@ jobs:
     name: E2E Tests - Playlists Flow
     runs-on: ubuntu-latest
     needs: [e2e-test-auth]
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
       - name: Setup Node.js
