@@ -16,7 +16,7 @@ on:
 
 jobs:
   deploy-test:
-    if: github.ref != 'refs/heads/main'
+    if: github.ref != 'refs/heads/main' && (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
