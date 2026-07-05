@@ -16,11 +16,11 @@ on:
 
 jobs:
   deploy-test:
-    if: github.ref != 'refs/heads/main'
+    if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/dependabot/') && (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Supabase CLI with retry
         uses: supabase/setup-cli@v2
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Supabase CLI with retry
         uses: supabase/setup-cli@v2
